@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import CtaButton from '../components/CtaButton.jsx'
 import { planos, comparacao } from '../../content/planos.json'
 
@@ -53,6 +53,61 @@ const limites = [
   { campo: 'armazenamento', rotulo: 'Fotos e anexos' },
 ]
 
+// Pulso do plano em destaque: um contorno azul sai da borda do cartão, cresce ~6 px de
+// cada lado e some; depois descansa até o próximo. A escala é calculada pelo tamanho do
+// cartão para o contorno crescer igual nos quatro lados. Só transform/opacity, via WAAPI
+// (o reset global não alcança), então prefers-reduced-motion é checado aqui.
+const PULSO_PX = 12
+const PULSO_MS = 3200
+
+function usePulso() {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const reduzir = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let animacao
+
+    const sincronizar = () => {
+      animacao?.cancel()
+      animacao = null
+      const el = ref.current
+      if (!el || reduzir.matches) return
+      const { width, height } = el.getBoundingClientRect()
+      const aberto = `scale(${1 + PULSO_PX / width}, ${1 + PULSO_PX / height})`
+      animacao = el.animate(
+        [
+          { opacity: 0.6, transform: 'scale(1)' },
+          { opacity: 0, transform: aberto, offset: 0.55 },
+          { opacity: 0, transform: aberto },
+        ],
+        { duration: PULSO_MS, delay: 800, iterations: Infinity, easing: 'ease-out' },
+      )
+    }
+
+    sincronizar()
+    reduzir.addEventListener('change', sincronizar)
+    window.addEventListener('resize', sincronizar)
+    return () => {
+      animacao?.cancel()
+      reduzir.removeEventListener('change', sincronizar)
+      window.removeEventListener('resize', sincronizar)
+    }
+  }, [])
+
+  return ref
+}
+
+function Pulso() {
+  const ref = usePulso()
+  return (
+    <span
+      ref={ref}
+      aria-hidden="true"
+      className="pointer-events-none absolute -inset-px rounded-card border-2 border-accent opacity-0"
+    />
+  )
+}
+
 // Plano em destaque vira um cartão escuro: os tokens são remapeados pelo data-surface.
 function CartaoPlano({ plano }) {
   const { id, nome, chamada, descricao, precoMensal, destaque, base, itens } = plano
@@ -60,10 +115,11 @@ function CartaoPlano({ plano }) {
   return (
     <li
       data-surface={destaque ? 'dark' : undefined}
-      className={`flex flex-col rounded-card border p-5 md:p-6 ${
+      className={`relative flex flex-col rounded-card border p-5 md:p-6 ${
         destaque ? 'border-accent bg-bg text-fg lg:-my-4 lg:py-10' : 'border-border bg-surface'
       }`}
     >
+      {destaque && <Pulso />}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id={`${id}-nome`} className="text-xl font-semibold">
           {nome}
