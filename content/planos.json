@@ -1,0 +1,87 @@
+{
+  "planos": [
+    {
+      "id": "plano-1",
+      "nome": "[PREENCHER: plano 1]",
+      "precoMensal": "[PREENCHER]",
+      "usuarios": "[PREENCHER]",
+      "ordensDeServico": "[PREENCHER]",
+      "destaque": false,
+      "itens": [
+        "Checklist de entrada com fotos",
+        "Kanban da bancada por técnico",
+        "Link de acompanhamento para o cliente",
+        "Histórico e garantia por aparelho",
+        "Suporte: [PREENCHER]"
+      ]
+    },
+    {
+      "id": "plano-2",
+      "nome": "[PREENCHER: plano 2]",
+      "precoMensal": "[PREENCHER]",
+      "usuarios": "[PREENCHER]",
+      "ordensDeServico": "[PREENCHER]",
+      "destaque": true,
+      "itens": [
+        "Tudo do plano anterior",
+        "Aviso automático ao cliente",
+        "Peças e estoque",
+        "Treinamento da equipe: [PREENCHER]",
+        "Suporte: [PREENCHER]"
+      ]
+    },
+    {
+      "id": "plano-3",
+      "nome": "[PREENCHER: plano 3]",
+      "precoMensal": "[PREENCHER]",
+      "usuarios": "[PREENCHER]",
+      "ordensDeServico": "[PREENCHER]",
+      "destaque": false,
+      "itens": [
+        "Tudo do plano anterior",
+        "[PREENCHER: recurso exclusivo]",
+        "[PREENCHER: recurso exclusivo]",
+        "Treinamento da equipe: [PREENCHER]",
+        "Suporte: [PREENCHER]"
+      ]
+    }
+  ],
+  "comparacao": [
+    {
+      "recurso": "Checklist de entrada com fotos",
+      "valores": { "plano-1": true, "plano-2": true, "plano-3": true }
+    },
+    {
+      "recurso": "Kanban da bancada por técnico",
+      "valores": { "plano-1": true, "plano-2": true, "plano-3": true }
+    },
+    {
+      "recurso": "Link de acompanhamento para o cliente",
+      "valores": { "plano-1": true, "plano-2": true, "plano-3": true }
+    },
+    {
+      "recurso": "Histórico e garantia por aparelho",
+      "valores": { "plano-1": true, "plano-2": true, "plano-3": true }
+    },
+    {
+      "recurso": "Aviso automático ao cliente",
+      "valores": { "plano-1": false, "plano-2": true, "plano-3": true }
+    },
+    {
+      "recurso": "Peças e estoque",
+      "valores": { "plano-1": false, "plano-2": true, "plano-3": true }
+    },
+    {
+      "recurso": "[PREENCHER: recursos exclusivos]",
+      "valores": { "plano-1": false, "plano-2": false, "plano-3": true }
+    },
+    {
+      "recurso": "Treinamento da equipe",
+      "valores": { "plano-1": "[PREENCHER]", "plano-2": "[PREENCHER]", "plano-3": "[PREENCHER]" }
+    },
+    {
+      "recurso": "Suporte",
+      "valores": { "plano-1": "[PREENCHER]", "plano-2": "[PREENCHER]", "plano-3": "[PREENCHER]" }
+    }
+  ]
+}
