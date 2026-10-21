@@ -5,9 +5,11 @@ const sizes = {
   sm: 'px-4 py-2 text-sm',
 }
 
-export default function CtaButton({ size = 'md', className = '' }) {
+// Props extras (ex.: aria-describedby) vão para o <a>; rótulo e link são sempre os de config.js.
+export default function CtaButton({ size = 'md', className = '', ...props }) {
   return (
     <a
+      {...props}
       href={CTA.href}
       target="_blank"
       rel="noopener noreferrer"

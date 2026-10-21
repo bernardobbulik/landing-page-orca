@@ -1,589 +1,642 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import CtaButton from '../components/CtaButton.jsx'
 
-// Status por passo: tokens --color-status-* de tokens.css. A cor fica só no ponto; o rótulo vai em texto.
-const PASSOS = [
-  {
-    id: 'entrada',
-    titulo: 'Entrada',
-    frase: 'No balcão, aparelho, defeito relatado e acessórios entram na OS antes de o cliente sair da loja.',
-    status: { rotulo: 'Recebido', classe: 'bg-status-recebido' },
-    tela: [
-      ['Aparelho', 'Smartphone'],
-      ['Defeito relatado', 'Tela trincada, toque falhando'],
-      ['Acessórios', 'Capa, sem chip'],
-      ['Atendimento', 'Balcão'],
-    ],
-  },
-  {
-    id: 'orcamento',
-    titulo: 'Orçamento',
-    frase: 'O técnico registra o diagnóstico e monta o orçamento na própria OS, com peça e serviço.',
-    status: { rotulo: 'Diagnóstico', classe: 'bg-status-diagnostico' },
-    tela: [
-      ['Diagnóstico', 'Display e touch danificados'],
-      ['Peça', 'Tela frontal'],
-      ['Serviço', 'Troca de tela'],
-      ['Técnico', 'Bancada 1'],
-    ],
-  },
-  {
-    id: 'aprovacao',
-    titulo: 'Aprovação do cliente',
-    frase: 'A resposta do cliente fica registrada. Nada vai para a bancada sem aprovação.',
-    status: { rotulo: 'Aprovado', classe: 'bg-status-aprovado' },
-    tela: [
-      ['Orçamento', 'Enviado ao cliente'],
-      ['Resposta', 'Aprovado'],
-      ['Registro', 'Data, hora e canal'],
-      ['Próxima etapa', 'Bancada'],
-    ],
-  },
-  {
-    id: 'bancada',
-    titulo: 'Bancada',
-    frase: 'Cada aparelho tem um responsável e uma etapa. O balcão vê o andamento sem precisar perguntar.',
-    status: { rotulo: 'Em reparo', classe: 'bg-status-reparo' },
-    tela: [
-      ['Responsável', 'Técnico da bancada 1'],
-      ['Peça', 'Separada para a OS'],
-      ['Etapa', 'Troca de tela'],
-      ['Pendências', 'Nenhuma'],
-    ],
-  },
-  {
-    id: 'teste',
-    titulo: 'Teste',
-    frase: 'Antes de liberar, o aparelho passa pelo checklist. O que foi testado fica na OS.',
-    status: { rotulo: 'Testes', classe: 'bg-status-testes' },
-    tela: [
-      ['Tela e toque', 'OK'],
-      ['Câmeras', 'OK'],
-      ['Carga', 'OK'],
-      ['Áudio e microfone', 'OK'],
-    ],
-  },
-  {
-    id: 'retirada',
-    titulo: 'Retirada',
-    frase: 'Pronto, avisado e entregue. A retirada fecha a OS com o histórico completo.',
-    status: { rotulo: 'Pronto', classe: 'bg-status-pronto' },
-    tela: [
-      ['Situação', 'Pronto para retirada'],
-      ['Cliente', 'Avisado pelo balcão'],
-      ['Garantia', 'Registrada na OS'],
-      ['Entrega', 'Data e hora registradas'],
-    ],
-  },
-]
+// Três capítulos de uma OS (balcão, bancada, entrega), cada um com uma tela grande do
+// sistema. As telas são interfaces de exemplo: números de OS, aparelhos, nomes, datas
+// e horários são ilustrativos, não dados de clientes reais.
 
-const ULTIMO = PASSOS.length - 1
-
-// Modo fixado (desktop com altura suficiente): a seção trava sob o header e cada giro da roda do mouse
-// avança uma etapa. Cada etapa ocupa PASSO_ROLAGEM px do trilho; parada no meio do trecho, o giro seguinte
-// depois da última etapa (~100 px) já solta a página.
-const PASSO_ROLAGEM = 120
-// Giros a menos de GIRO_NOVO_MS um do outro são o mesmo gesto (um giro rápido, inércia do trackpad).
-// Girando sem parar, avança uma etapa a cada GIRO_CONTINUO_MS.
-const GIRO_NOVO_MS = 150
-const GIRO_CONTINUO_MS = 600
-const TOPO_FIXO = 64 // altura do header sticky (top-16)
-const FOLGA_FIXO = 48 // py-6 da caixa fixada
-
-const TECLAS = {
-  ArrowRight: (i) => i + 1,
-  ArrowDown: (i) => i + 1,
-  ArrowLeft: (i) => i - 1,
-  ArrowUp: (i) => i - 1,
-  Home: () => 0,
-  End: () => ULTIMO,
-}
-
-function ChipStatus({ rotulo, classe }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-sm font-medium">
-      {/* key troca o ponto a cada passo para ele "acender" de novo (só opacity/scale). */}
-      <span
-        key={rotulo}
-        aria-hidden="true"
-        className={`size-2.5 rounded-full ${classe} transition-[opacity,scale] duration-300 starting:scale-50 starting:opacity-0`}
-      />
-      <span>
-        <span className="sr-only">Status: </span>
-        {rotulo}
-      </span>
-    </span>
-  )
-}
-
-function MiniTela({ passo }) {
-  return (
-    <figure className="rounded-card border border-border bg-surface p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-        <p className="font-mono text-sm text-fg-muted">OS de exemplo</p>
-        <ChipStatus {...passo.status} />
-      </div>
-      <dl className="divide-y divide-border">
-        {passo.tela.map(([termo, valor]) => (
-          <div key={termo} className="flex justify-between gap-4 py-2 text-sm">
-            <dt className="text-fg-muted">{termo}</dt>
-            <dd className="text-right font-medium">{valor}</dd>
-          </div>
-        ))}
-      </dl>
-      <figcaption className="mt-3 text-xs text-fg-muted">
-        Tela ilustrativa: o que a equipe vê nesta etapa.
-      </figcaption>
-    </figure>
-  )
-}
-
-// Avançar: o conteúdo atual sai pela direita e o novo entra pela esquerda. Voltar: o contrário.
-// Só transform/opacity; o reset global de prefers-reduced-motion zera as durações.
-const MOVIMENTO = {
-  frente: {
-    entra: 'starting:-translate-x-8 starting:opacity-0',
-    sai: 'translate-x-8 opacity-0 starting:translate-x-0 starting:opacity-100',
-  },
-  tras: {
-    entra: 'starting:translate-x-8 starting:opacity-0',
-    sai: '-translate-x-8 opacity-0 starting:translate-x-0 starting:opacity-100',
-  },
-}
-
-const TRANSICAO = 'transition-[opacity,translate] ease-out'
-const SAIDA_MS = 150
-
-function Seta({ className = '' }) {
+function Icone({ children, className = 'size-5' }) {
   return (
     <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
+      viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      focusable="false"
-      className={`size-4 ${className}`}
+      className={className}
     >
-      <path d="M3 8h10M9 4l4 4-4 4" />
+      {children}
     </svg>
   )
 }
 
-function NavPassos({ indice, aoNavegar, fixado }) {
-  const ultimo = indice === ULTIMO
-  // Fixado, quem avança é a rolagem: no lugar dos botões fica a deixa, com a mesma altura.
-  if (fixado) {
-    return ultimo ? (
-      <BotaoPlanos />
-    ) : (
-      <p className="inline-flex min-h-11 items-center gap-2 text-sm text-fg-muted">
-        Role para a próxima:
-        <span className="font-semibold text-fg">{PASSOS[indice + 1].titulo}</span>
-        <Seta className="rotate-90" />
-      </p>
-    )
-  }
+const Check = ({ className }) => (
+  <Icone className={className}>
+    <path d="m5 12 5 5 9-10" />
+  </Icone>
+)
+
+// Relógio de uma tela: conta passos enquanto `ativo` (tela à vista). Desligado com
+// prefers-reduced-motion (volta ao passo 0, que é sempre um estado completo) e com a aba oculta.
+function useRelogio(intervaloMs, ativo) {
+  const [passo, setPasso] = useState(0)
+
+  useEffect(() => {
+    const reduzir = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let timer
+
+    const sincronizar = () => {
+      clearInterval(timer)
+      if (ativo && !reduzir.matches && !document.hidden) {
+        timer = setInterval(() => setPasso((p) => p + 1), intervaloMs)
+      }
+    }
+    const aoMudarMovimento = () => {
+      if (reduzir.matches) setPasso(0)
+      sincronizar()
+    }
+
+    sincronizar()
+    reduzir.addEventListener('change', aoMudarMovimento)
+    document.addEventListener('visibilitychange', sincronizar)
+    return () => {
+      clearInterval(timer)
+      reduzir.removeEventListener('change', aoMudarMovimento)
+      document.removeEventListener('visibilitychange', sincronizar)
+    }
+  }, [intervaloMs, ativo])
+
+  return passo
+}
+
+// O relógio só anda com a tela visível: a primeira troca acontece diante do visitante.
+function useNaTela(ref) {
+  const [naTela, setNaTela] = useState(false)
+
+  useEffect(() => {
+    const observador = new IntersectionObserver(([entrada]) => setNaTela(entrada.isIntersecting), {
+      threshold: 0.3,
+    })
+    observador.observe(ref.current)
+    return () => observador.disconnect()
+  }, [ref])
+
+  return naTela
+}
+
+// Todas as variantes empilhadas na mesma célula do grid; só a atual aparece. O bloco tem
+// o tamanho da maior (nada pula) e a troca é um crossfade, só de opacidade.
+const variante = 'col-start-1 row-start-1 min-w-0 transition-opacity duration-700 ease-in-out'
+
+function Alterna({ valores, atual, className = '', children = (v) => v }) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      {indice > 0 && (
-        <button
-          type="button"
-          data-nav="anterior"
-          onClick={() => aoNavegar(indice - 1, 'anterior')}
-          className="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-button border border-border bg-surface px-4 text-sm font-medium text-fg-muted hover:border-fg hover:text-fg"
-        >
-          <Seta className="rotate-180 transition-transform duration-200 group-hover:-translate-x-0.5" />
-          Anterior
-        </button>
-      )}
-      {ultimo ? (
-        <BotaoPlanos />
-      ) : (
-        <button
-          type="button"
-          data-nav="proxima"
-          onClick={() => aoNavegar(indice + 1, 'proxima')}
-          className="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-button border-2 border-accent bg-surface px-4 text-sm font-semibold text-accent"
-        >
-          {`Próxima: ${PASSOS[indice + 1].titulo}`}
-          <Seta className="transition-transform duration-200 group-hover:translate-x-1" />
-        </button>
-      )}
+    <span className={`grid ${className}`}>
+      {[...new Set(valores)].map((v) => (
+        <span key={v} className={`${variante} ${v === atual ? 'opacity-100' : 'opacity-0'}`}>
+          {children(v)}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+const suave = 'duration-700 ease-in-out'
+
+// Cor do status só no ponto; o rótulo é sempre texto em fg.
+function Chip({ rotulo, ponto }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-bg px-2.5 py-1 text-xs font-medium text-fg">
+      <span className={`size-2 shrink-0 rounded-full ${ponto}`} />
+      {rotulo}
+    </span>
+  )
+}
+
+// Moldura de app, na mesma linguagem do painel do Hero.
+function Moldura({ titulo, rotulo, children }) {
+  return (
+    <div role="img" aria-label={rotulo} className="overflow-hidden rounded-card border border-border bg-surface">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+        <span className="flex gap-1.5">
+          <span className="size-2.5 rounded-full bg-border" />
+          <span className="size-2.5 rounded-full bg-border" />
+          <span className="size-2.5 rounded-full bg-border" />
+        </span>
+        <span className="flex-1 truncate rounded-button bg-bg px-3 py-1 text-xs text-fg-muted">{titulo}</span>
+      </div>
+      <div className="p-4 md:p-5">{children}</div>
     </div>
   )
 }
 
-// Fecho da Jornada. Exceções ao brandkit aprovadas para este botão: fundo âmbar (status-aguardando,
-// texto fg ~9:1) e reflexo metálico. O reflexo roda via WAAPI, que o reset global não alcança,
-// por isso a checagem explícita de prefers-reduced-motion.
-function BotaoPlanos() {
-  const brilho = useRef(null)
+const rotuloCampo = 'block text-xs text-fg-muted'
+const bloco = 'rounded-card border border-border bg-bg p-3 md:p-4'
 
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const animacao = brilho.current?.animate(
-      [{ translate: '-120% 0' }, { translate: '320% 0', offset: 0.4 }, { translate: '320% 0' }],
-      { duration: 2800, delay: 300, iterations: Infinity, easing: 'ease-in-out' },
-    )
-    return () => animacao?.cancel()
-  }, [])
+// ——— Capítulo 1: abertura da OS no balcão ———
+
+const camposEntrada = [
+  ['Cliente', 'Ana P. · WhatsApp (11) 9••••-4821'],
+  ['Aparelho', 'iPhone 13 · 128 GB'],
+  ['Defeito relatado', 'Tela trincada, toque falhando'],
+  ['Acessórios', 'Capa, sem chip'],
+]
+const checklistEntrada = [
+  ['Liga e carrega', 'Ok'],
+  ['Tela', 'Trinca no canto superior'],
+  ['Câmeras', 'Ok'],
+  ['Carcaça', 'Riscos na lateral'],
+  ['Botões', 'Ok'],
+]
+const PENDENTE = 'a verificar'
+
+// QR decorativo 11×11: três cantos de leitura (3×3 com uma faixa vazia em volta) e um
+// miolo fixo que parece aleatório.
+const QR = 11
+const naZona = (x, y, n) => (x < n && y < n) || (x >= QR - n && y < n) || (x < n && y >= QR - n)
+const modulosQr = []
+for (let y = 0; y < QR; y++) {
+  for (let x = 0; x < QR; x++) {
+    const ligado = naZona(x, y, 4) ? naZona(x, y, 3) : (x * 31 + y * 17 + x * y * 7) % 5 < 2
+    if (ligado) modulosQr.push([x, y])
+  }
+}
+
+function CodigoQr({ className }) {
+  return (
+    <svg viewBox={`0 0 ${QR} ${QR}`} aria-hidden="true" className={className} shapeRendering="crispEdges">
+      {modulosQr.map(([x, y]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="currentColor" />
+      ))}
+    </svg>
+  )
+}
+
+// Ciclo de 7 passos: 0 a 5 itens conferidos, com uma pausa no fim. O passo 0 é o
+// checklist completo (estado parado com prefers-reduced-motion).
+function TelaEntrada({ passo }) {
+  const feitos = Math.min((passo + 5) % 7, checklistEntrada.length)
+  const completo = feitos === checklistEntrada.length
 
   return (
-    <a
-      href="#precos"
-      data-nav="proxima"
-      className="group relative inline-flex min-h-11 items-center gap-2 overflow-hidden rounded-button border border-status-aguardando bg-status-aguardando px-4 text-sm font-medium text-fg transition-transform duration-200 ease-out hover:-translate-y-0.5"
+    <Moldura
+      titulo="Nova ordem de serviço"
+      rotulo="Exemplo da tela de abertura de OS: dados do cliente e do aparelho, defeito relatado, checklist de entrada com fotos e etiqueta com QR Code."
     >
-      <span
-        ref={brilho}
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -translate-x-[120%] -skew-x-20 bg-linear-to-r from-transparent via-surface/70 to-transparent"
-      />
-      <span className="relative">
-        Agora é com <strong className="font-bold">você</strong>.
-      </span>
-      <Seta className="relative transition-transform duration-200 group-hover:translate-x-1" />
-    </a>
-  )
-}
-
-function Painel({ indice, movimento, saindo = false, comTitulo = false, nav = null, className = '' }) {
-  const passo = PASSOS[indice]
-  const anim = saindo
-    ? `${TRANSICAO} duration-150 ${MOVIMENTO[movimento].sai}`
-    : `${TRANSICAO} duration-200 ${MOVIMENTO[movimento].entra}`
-  return (
-    <div className={`gap-6 lg:grid-cols-2 lg:items-center ${className}`}>
-      <div>
-        <div key={`texto-${indice}`} className={`${anim} ${saindo ? '' : 'delay-100'}`}>
-          {comTitulo && (
-            <>
-              <p className="text-sm text-fg-muted">
-                Passo {indice + 1} de {PASSOS.length}
-              </p>
-              <h3 className="mt-1 text-2xl font-semibold">{passo.titulo}</h3>
-            </>
-          )}
-          <p className={`text-fg-muted ${comTitulo ? 'mt-3 text-lg' : ''}`}>{passo.frase}</p>
-        </div>
-        {comTitulo && nav && <div className="mt-6">{nav}</div>}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="font-display font-semibold">
+          OS <span className="font-mono">#1043</span>
+        </p>
+        <span className="flex items-center gap-3 text-xs text-fg-muted">
+          Hoje, 09:15
+          <Chip rotulo="Recebido" ponto="bg-status-recebido" />
+        </span>
       </div>
-      <div key={`tela-${indice}`} className={`${anim} ${saindo ? '' : 'delay-150'}`}>
-        <MiniTela passo={passo} />
-      </div>
-      {!comTitulo && nav}
-    </div>
-  )
-}
 
-const visivel = (el) => el.offsetParent !== null
+      <dl className="mt-4 grid gap-x-4 gap-y-3 sm:grid-cols-2">
+        {camposEntrada.map(([termo, valor]) => (
+          <div key={termo} className="min-w-0 rounded-button border border-border px-3 py-2">
+            <dt className={rotuloCampo}>{termo}</dt>
+            <dd className="truncate text-sm font-medium">{valor}</dd>
+          </div>
+        ))}
+      </dl>
 
-export default function Jornada() {
-  const [ativo, setAtivo] = useState(0)
-  const [explorou, setExplorou] = useState(false)
-  const [movimento, setMovimento] = useState('frente')
-  const [saindo, setSaindo] = useState(null)
-  const [fixado, setFixado] = useState(false)
-  const botoes = useRef([])
-  const trilho = useRef(null)
-  const conteudo = useRef(null)
-  const itens = useRef([])
-  const quadro = useRef(null)
-  const focoPendente = useRef(null)
-
-  // Fixa só no desktop e quando a seção inteira cabe abaixo do header; senão fica o modo de clique.
-  useEffect(() => {
-    const desktop = window.matchMedia('(min-width: 48rem)')
-    const medir = () => {
-      const altura = conteudo.current.offsetHeight + FOLGA_FIXO
-      setFixado(desktop.matches && altura <= window.innerHeight - TOPO_FIXO)
-    }
-    medir()
-    const observador = new ResizeObserver(medir)
-    observador.observe(conteudo.current)
-    window.addEventListener('resize', medir)
-    return () => {
-      observador.disconnect()
-      window.removeEventListener('resize', medir)
-    }
-  }, [])
-
-  // Fixado, a posição de rolagem é a fonte da verdade: cada trecho do trilho corresponde a uma etapa.
-  const seguirRolagem = useEffectEvent(() => {
-    const rolado = TOPO_FIXO - trilho.current.getBoundingClientRect().top
-    ir(Math.min(Math.max(Math.floor(rolado / PASSO_ROLAGEM), 0), ULTIMO))
-  })
-
-  useEffect(() => {
-    if (!fixado) return
-    let quadroPendente = 0
-    const aoRolar = () => {
-      if (quadroPendente) return
-      quadroPendente = requestAnimationFrame(() => {
-        quadroPendente = 0
-        seguirRolagem()
-      })
-    }
-    seguirRolagem()
-    window.addEventListener('scroll', aoRolar, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', aoRolar)
-      cancelAnimationFrame(quadroPendente)
-    }
-  }, [fixado])
-
-  // Roda do mouse com a seção presa: um gesto = uma etapa. Antes da primeira e depois da última,
-  // a rolagem nativa segue e a página solta.
-  const girosRoda = useRef({ ultimo: 0, avanco: 0 })
-  const aoGirar = useEffectEvent((event) => {
-    if (event.ctrlKey || event.deltaY === 0) return
-    const rolado = TOPO_FIXO - trilho.current.getBoundingClientRect().top
-    if (rolado < 0 || rolado >= PASSOS.length * PASSO_ROLAGEM) return
-    const atual = Math.min(Math.floor(rolado / PASSO_ROLAGEM), ULTIMO)
-    const destino = atual + Math.sign(event.deltaY)
-    if (destino < 0 || destino > ULTIMO) return
-    event.preventDefault()
-    const giros = girosRoda.current
-    const agora = event.timeStamp
-    const novoGesto = agora - giros.ultimo > GIRO_NOVO_MS || agora - giros.avanco > GIRO_CONTINUO_MS
-    giros.ultimo = agora
-    if (!novoGesto) return
-    giros.avanco = agora
-    const inicio = rolado - window.scrollY
-    window.scrollTo({ top: (destino + 0.5) * PASSO_ROLAGEM - inicio, behavior: 'instant' })
-  })
-
-  useEffect(() => {
-    if (!fixado) return
-    window.addEventListener('wheel', aoGirar, { passive: false })
-    return () => window.removeEventListener('wheel', aoGirar)
-  }, [fixado])
-
-  // Rola até o passo só depois de uma ação do usuário; suave apenas sem prefers-reduced-motion.
-  const rolarAteAtivo = useEffectEvent(() => {
-    if (!explorou || fixado) return
-    const reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const desktop = window.matchMedia('(min-width: 48rem)').matches
-    const alvo = desktop ? quadro.current : itens.current[ativo]
-    alvo?.scrollIntoView({ block: 'nearest', behavior: reduzido ? 'auto' : 'smooth' })
-  })
-
-  useEffect(() => {
-    rolarAteAtivo()
-  }, [ativo, explorou])
-
-  // No celular o painel muda de <li> e os botões Anterior/Próxima são recriados: devolve o foco a eles.
-  useEffect(() => {
-    const tipo = focoPendente.current
-    if (!tipo || !quadro.current) return
-    focoPendente.current = null
-    const controles = [...quadro.current.querySelectorAll('[data-nav]')].filter(visivel)
-    const alvo = controles.find((el) => el.dataset.nav === tipo) ?? controles[0]
-    if (alvo && alvo !== document.activeElement) alvo.focus({ preventScroll: true })
-  }, [ativo])
-
-  // Remove a cópia que está saindo assim que a animação de saída termina.
-  useEffect(() => {
-    if (!saindo) return
-    const timer = setTimeout(() => setSaindo(null), SAIDA_MS + 50)
-    return () => clearTimeout(timer)
-  }, [saindo])
-
-  function ir(indice) {
-    if (indice === ativo) return
-    const sentido = indice > ativo ? 'frente' : 'tras'
-    setExplorou(true)
-    setMovimento(sentido)
-    setSaindo({ indice: ativo, movimento: sentido })
-    setAtivo(indice)
-  }
-
-  // Fixado, clique e teclado levam a rolagem ao meio do trecho da etapa; o scroll faz o resto.
-  // Sem behavior: vale o scroll-behavior do html (suave, ou instantâneo com reduced-motion).
-  function irPara(indice) {
-    if (!fixado) return ir(indice)
-    const inicio = trilho.current.getBoundingClientRect().top + window.scrollY - TOPO_FIXO
-    window.scrollTo({ top: inicio + (indice + 0.5) * PASSO_ROLAGEM })
-  }
-
-  function navegarPeloPainel(indice, tipo) {
-    focoPendente.current = tipo
-    ir(indice)
-  }
-
-  function aoTeclar(event, indice) {
-    const destino = TECLAS[event.key]
-    if (!destino) return
-    event.preventDefault()
-    const novo = Math.min(Math.max(destino(indice), 0), ULTIMO)
-    irPara(novo)
-    botoes.current[novo]?.focus({ preventScroll: true })
-  }
-
-  const nav = <NavPassos indice={ativo} aoNavegar={navegarPeloPainel} fixado={fixado} />
-
-  return (
-    <section id="jornada" aria-labelledby="jornada-titulo" className={fixado ? undefined : 'section-y'}>
-      <div ref={trilho}>
-        <div
-          className={
-            fixado ? 'sticky top-16 flex min-h-[calc(100svh-4rem)] flex-col justify-center py-6' : undefined
-          }
-        >
-          <div ref={conteudo} className="container-page">
-            <h2 id="jornada-titulo" className="text-3xl font-bold tracking-tight md:text-4xl">
-              Do balcão à bancada, cada etapa registrada.
-            </h2>
-            <p className="mt-4 max-w-2xl text-lg text-fg-muted">
-              Da bancada ao cliente. Veja o que a equipe registra em cada etapa da ordem de serviço.
-            </p>
-
-            <div ref={quadro} className="mt-10 scroll-mt-20 scroll-mb-4">
-              <p id="jornada-dica" className="mb-6 flex items-center gap-2 text-sm text-fg-muted">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  focusable="false"
-                  className="size-5 shrink-0 text-accent"
-                >
-                  {fixado ? (
-                    <>
-                      <rect x="6" y="3" width="12" height="18" rx="6" />
-                      <path d="M12 7v3" />
-                    </>
-                  ) : (
-                    <path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-1.5a1.5 1.5 0 0 1 3 0V11m0-1a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.9-2.6L4.6 14a1.5 1.5 0 0 1 2.4-1.8L9 14.5" />
-                  )}
-                </svg>
-                {fixado ? (
-                  <span>Role a página para seguir o aparelho, ou clique em uma etapa.</span>
-                ) : (
-                  <>
-                    <span className="md:hidden">
-                      Toque em uma etapa ou use “Próxima” para seguir o aparelho.
-                    </span>
-                    <span className="hidden md:inline">
-                      Clique em uma etapa, use “Próxima” ou as setas do teclado para seguir o aparelho.
-                    </span>
-                  </>
-                )}
-              </p>
-
-              <ol
-                aria-label="Etapas da ordem de serviço"
-                aria-describedby="jornada-dica"
-                className="md:grid md:grid-cols-6"
+      <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
+        <div className={bloco}>
+          <p className="flex items-center justify-between text-xs text-fg-muted">
+            <span className="font-medium text-fg">Checklist de entrada</span>
+            <span>
+              {feitos} de {checklistEntrada.length}
+            </span>
+          </p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {checklistEntrada.map(([item, obs], i) => {
+              const feito = i < feitos
+              return (
+                <li key={item} className="flex items-start gap-2">
+                  <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-sm border border-border bg-surface text-accent">
+                    <Check className={`size-3 transition-opacity ${suave} ${feito ? 'opacity-100' : 'opacity-0'}`} />
+                  </span>
+                  <span className="flex min-w-0 gap-1">
+                    <span className="shrink-0 font-medium">{item}</span>
+                    <span className="text-fg-muted">·</span>
+                    <Alterna valores={[PENDENTE, obs]} atual={feito ? obs : PENDENTE} className="text-fg-muted" />
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="mt-4 flex gap-2">
+            {[0, 1, 2, 3].map((n) => (
+              <span
+                key={n}
+                className="grid size-12 place-items-center rounded-button border border-border bg-surface text-fg-muted"
               >
-                {PASSOS.map((passo, i) => {
-                  const atual = i === ativo
-                  const feito = i < ativo
-                  const convida = !explorou && !fixado && i === ativo + 1
-                  return (
-                    <li
-                      key={passo.id}
-                      ref={(el) => {
-                        itens.current[i] = el
-                      }}
-                      className="relative scroll-mt-20 scroll-mb-4 pb-6 last:pb-0 md:pb-0"
-                    >
-                      {i < ULTIMO && (
-                        <span
-                          aria-hidden="true"
-                          className="absolute top-11 bottom-1 left-[calc(1.125rem-1px)] w-0.5 bg-border md:top-[calc(1.125rem-1px)] md:right-3 md:bottom-auto md:left-12 md:h-0.5 md:w-auto"
-                        >
-                          <span
-                            className={`absolute inset-0 origin-top bg-highlight transition-transform duration-500 md:origin-left ${
-                              feito ? 'scale-100' : 'scale-y-0 md:scale-x-0 md:scale-y-100'
-                            }`}
-                          />
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        ref={(el) => {
-                          botoes.current[i] = el
-                        }}
-                        aria-current={atual ? 'step' : undefined}
-                        tabIndex={atual ? 0 : -1}
-                        onClick={() => irPara(i)}
-                        onKeyDown={(event) => aoTeclar(event, i)}
-                        className="group flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-button text-left md:w-auto md:flex-col md:items-start md:pr-3"
-                      >
-                        <span className="relative flex size-9 shrink-0">
-                          {/* Pulso no próximo passo até a primeira interação: mostra onde clicar. */}
-                          {convida && (
-                            <span
-                              aria-hidden="true"
-                              className="absolute inset-0 animate-ping rounded-full border-2 border-accent"
-                            />
-                          )}
-                          <span
-                            aria-hidden="true"
-                            className={`relative flex size-9 items-center justify-center rounded-full border-2 font-display text-sm font-semibold transition-transform duration-200 group-hover:scale-110 ${
-                              atual
-                                ? 'border-accent bg-accent text-on-accent'
-                                : feito
-                                  ? 'border-accent bg-surface text-fg'
-                                  : 'border-border bg-surface text-fg-muted group-hover:border-accent'
-                            }`}
-                          >
-                            {i + 1}
-                          </span>
-                        </span>
-                        <span
-                          className={`md:text-sm ${
-                            atual
-                              ? 'font-semibold text-fg'
-                              : 'text-fg-muted underline-offset-4 group-hover:text-fg group-hover:underline'
-                          }`}
-                        >
-                          {passo.titulo}
-                        </span>
-                      </button>
-                      {atual && (
-                        <Painel
-                          indice={i}
-                          movimento={movimento}
-                          nav={nav}
-                          className="mt-4 grid pl-12 md:hidden"
-                        />
-                      )}
-                    </li>
-                  )
-                })}
-              </ol>
-
-              <div className="relative mt-10 hidden md:block">
-                {saindo && (
-                  <div aria-hidden="true" inert className="pointer-events-none absolute inset-x-0 top-0">
-                    <Painel
-                      key={`saindo-${saindo.indice}`}
-                      indice={saindo.indice}
-                      movimento={saindo.movimento}
-                      saindo
-                      comTitulo
-                      className="grid"
-                    />
-                  </div>
-                )}
-                <Painel indice={ativo} movimento={movimento} comTitulo nav={nav} className="grid" />
-              </div>
-            </div>
+                <Icone className={`size-4 transition-opacity ${suave} ${n < feitos - 1 ? 'opacity-100' : 'opacity-30'}`}>
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <circle cx="12" cy="12" r="3.5" />
+                </Icone>
+              </span>
+            ))}
           </div>
         </div>
-        {/* Pista de rolagem: um trecho por etapa enquanto a caixa acima fica presa sob o header. */}
-        {fixado && <div aria-hidden="true" style={{ height: PASSOS.length * PASSO_ROLAGEM }} />}
+
+        <div className={`${bloco} flex flex-col items-center text-center`}>
+          <span className="text-xs font-medium">Etiqueta</span>
+          <span className="mt-3 rounded-button border border-border bg-surface p-2 text-fg">
+            <CodigoQr className="size-20" />
+          </span>
+          <span className="mt-2 font-mono text-xs font-semibold">#1043</span>
+          <span className="text-xs text-fg-muted">iPhone 13</span>
+          <Alterna
+            valores={['aguardando', 'impressa']}
+            atual={completo ? 'impressa' : 'aguardando'}
+            className="mt-3 justify-items-center text-xs"
+          >
+            {(v) =>
+              v === 'impressa' ? (
+                <span className="inline-flex items-center gap-1 font-medium">
+                  <Check className="size-3.5 text-accent" />
+                  Impressa
+                </span>
+              ) : (
+                <span className="text-fg-muted">Após o checklist</span>
+              )
+            }
+          </Alterna>
+        </div>
+      </div>
+    </Moldura>
+  )
+}
+
+// ——— Capítulo 2: quadro da bancada ———
+
+// Cor da etapa só na barra; o nome da etapa é sempre texto em fg.
+const colunasBancada = [
+  { etapa: 'Diagnóstico', barra: 'bg-status-diagnostico', fixas: [['1047', 'iPhone 11', 'Não liga', 'BR']] },
+  {
+    etapa: 'Aguardando aprovação',
+    barra: 'bg-status-aguardando',
+    fixas: [['1044', 'Galaxy A54', 'Bateria', 'LI']],
+  },
+  {
+    etapa: 'Em reparo',
+    barra: 'bg-status-reparo',
+    fixas: [
+      ['1041', 'Redmi Note 12', 'Conector de carga', 'CA'],
+      ['1039', 'iPhone 12', 'Câmera traseira', 'BR'],
+    ],
+  },
+  { etapa: 'Testes', barra: 'bg-status-testes', fixas: [['1040', 'Moto G84', 'Tela', 'LI']] },
+]
+// Uma OS por vez anda pela bancada, uma coluna por passo, no fim de cada coluna.
+const ordensEmFluxo = [
+  ['1045', 'Moto G54', 'Tela trincada', 'BR'],
+  ['1048', 'Galaxy S21', 'Alto-falante', 'CA'],
+]
+const VAGA_LIVRE = 'livre'
+// O que o balcão vê quando a OS em fluxo chega a cada coluna.
+const eventosBancada = [
+  { texto: 'Diagnóstico registrado na OS', ponto: 'bg-status-diagnostico' },
+  { texto: 'Orçamento enviado ao cliente por link', ponto: 'bg-status-aguardando' },
+  { texto: 'Aprovado pelo cliente · peça baixada do estoque', ponto: 'bg-status-reparo' },
+  { texto: 'Reparo concluído · checklist de testes iniciado', ponto: 'bg-status-testes' },
+]
+const tecnicosBancada = [
+  { nome: 'Todos', total: 7, ativo: true },
+  { nome: 'Bruno', total: 3 },
+  { nome: 'Lia', total: 2 },
+  { nome: 'Caio', total: 2 },
+]
+
+function CartaoOs({ numero, aparelho, defeito, tecnico }) {
+  return (
+    <span className="block rounded-button border border-border bg-surface px-2.5 py-2 text-xs">
+      <span className="flex items-center justify-between gap-2">
+        <span className="font-mono font-semibold">#{numero}</span>
+        <span className="grid size-6 shrink-0 place-items-center rounded-full border border-border bg-bg text-xs font-semibold">
+          {tecnico}
+        </span>
+      </span>
+      <span className="mt-1 block truncate font-medium">{aparelho}</span>
+      <span className="block truncate text-fg-muted">{defeito}</span>
+    </span>
+  )
+}
+
+function TelaBancada({ passo }) {
+  // O passo 0 já mostra a OS no meio do caminho (aprovada), estado parado com reduced-motion.
+  const s = passo + 2
+  const ordem = Math.floor(s / colunasBancada.length) % ordensEmFluxo.length
+  const colunaAtual = s % colunasBancada.length
+  const [numero] = ordensEmFluxo[ordem]
+  const chaves = ordensEmFluxo.map(([n]) => n)
+
+  return (
+    <Moldura
+      titulo="Bancada"
+      rotulo="Exemplo do quadro da bancada: ordens de serviço em colunas de diagnóstico, aguardando aprovação, em reparo e testes, com o técnico de cada uma; uma OS avança de coluna enquanto o aviso mostra o que aconteceu."
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {tecnicosBancada.map(({ nome, total, ativo }) => (
+            <span
+              key={nome}
+              className={`rounded-full border bg-surface px-2.5 py-1 text-xs ${
+                ativo ? 'border-accent font-semibold text-fg' : 'border-border font-medium text-fg-muted'
+              }`}
+            >
+              {nome} · {total}
+            </span>
+          ))}
+        </div>
+        <span className="text-xs text-fg-muted">Atualizado agora</span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-4 gap-3">
+        {colunasBancada.map(({ etapa, barra, fixas }, coluna) => (
+          <div key={etapa} className="min-w-0 rounded-card bg-bg p-2">
+            <span className={`block h-1 rounded-full ${barra}`} />
+            {/* Altura de duas linhas: "Aguardando aprovação" quebra e os cartões seguem alinhados. */}
+            <p className="mt-2 flex min-h-[2.5rem] items-start justify-between gap-1 text-xs leading-snug font-medium">
+              <span>{etapa}</span>
+              <Alterna valores={['com', 'sem']} atual={coluna === colunaAtual ? 'com' : 'sem'} className="text-fg-muted">
+                {(v) => fixas.length + (v === 'com' ? 1 : 0)}
+              </Alterna>
+            </p>
+            <ul className="mt-2 space-y-2">
+              {fixas.map(([n, aparelho, defeito, tecnico]) => (
+                <li key={n}>
+                  <CartaoOs numero={n} aparelho={aparelho} defeito={defeito} tecnico={tecnico} />
+                </li>
+              ))}
+              <li>
+                <Alterna valores={[VAGA_LIVRE, ...chaves]} atual={coluna === colunaAtual ? numero : VAGA_LIVRE}>
+                  {(n) => {
+                    if (n === VAGA_LIVRE) return null
+                    const [, aparelho, defeito, tecnico] = ordensEmFluxo.find(([k]) => k === n)
+                    return (
+                      <span className="block rounded-button ring-2 ring-accent">
+                        <CartaoOs numero={n} aparelho={aparelho} defeito={defeito} tecnico={tecnico} />
+                      </span>
+                    )
+                  }}
+                </Alterna>
+              </li>
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex items-center gap-3 rounded-card border border-border bg-bg px-3 py-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-surface">
+          <Icone className="size-4">
+            <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+            <path d="M10 20.5a2 2 0 0 0 4 0" />
+          </Icone>
+        </span>
+        <Alterna
+          valores={chaves.flatMap((n) => eventosBancada.map((_, i) => `${n}-${i}`))}
+          atual={`${numero}-${colunaAtual}`}
+          className="min-w-0 flex-1 text-sm"
+        >
+          {(chave) => {
+            const [n, i] = chave.split('-')
+            const { texto, ponto } = eventosBancada[i]
+            return (
+              <span className="flex items-center gap-2">
+                <span className={`size-2 shrink-0 rounded-full ${ponto}`} />
+                <span className="truncate">
+                  <span className="font-medium">{texto}</span>
+                  <span className="text-fg-muted"> · OS #{n} · agora</span>
+                </span>
+              </span>
+            )
+          }}
+        </Alterna>
+      </div>
+    </Moldura>
+  )
+}
+
+// ——— Capítulo 3: testes, pronto e entrega ———
+
+const linhaDoTempo = [
+  { rotulo: 'Recebido', hora: '09:15', ponto: 'bg-status-recebido' },
+  { rotulo: 'Diagnóstico', hora: '10:02', ponto: 'bg-status-diagnostico' },
+  { rotulo: 'Aprovado', hora: '10:42', ponto: 'bg-status-aprovado' },
+  { rotulo: 'Em reparo', hora: '11:20', ponto: 'bg-status-reparo' },
+  { rotulo: 'Testes', hora: '15:40', ponto: 'bg-status-testes' },
+  { rotulo: 'Pronto', hora: '16:05', ponto: 'bg-status-pronto' },
+  { rotulo: 'Entregue', hora: '17:30', ponto: 'bg-status-entregue' },
+]
+const TESTES = 4
+const PRONTO = 5
+const ENTREGUE = 6
+// Testes → Pronto → Entregue, com pausa na entrega. O passo 0 é a OS entregue.
+const sequenciaEntrega = [ENTREGUE, ENTREGUE, TESTES, PRONTO]
+const testes = ['Tela e toque', 'Câmeras', 'Carga', 'Áudio']
+const reparosAnteriores = [
+  ['0877', 'Troca de bateria', 'abr/2026'],
+  ['0512', 'Conector de carga', 'ago/2025'],
+]
+
+function TelaEntrega({ passo }) {
+  const etapa = sequenciaEntrega[passo % sequenciaEntrega.length]
+
+  return (
+    <Moldura
+      titulo="OS #1042"
+      rotulo="Exemplo da OS na entrega: linha do tempo com o horário de cada etapa, checklist de testes, aviso de pronto enviado por WhatsApp, garantia e reparos anteriores do aparelho."
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="min-w-0">
+          <span className="font-display font-semibold">iPhone 13</span>
+          <span className="text-sm text-fg-muted"> · Ana P. · Troca de tela</span>
+        </p>
+        <Alterna valores={[TESTES, PRONTO, ENTREGUE]} atual={etapa} className="justify-items-end">
+          {(i) => <Chip rotulo={linhaDoTempo[i].rotulo} ponto={linhaDoTempo[i].ponto} />}
+        </Alterna>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)]">
+        <div className={bloco}>
+          <p className="text-xs font-medium">Linha do tempo</p>
+          <ol className="mt-3 space-y-2.5 border-l border-border pl-4">
+            {linhaDoTempo.map(({ rotulo, hora, ponto }, i) => {
+              const feito = i <= etapa
+              return (
+                <li key={rotulo} className="relative flex items-center justify-between gap-3 text-sm">
+                  <span
+                    className={`absolute top-1/2 -left-[21px] size-2.5 -translate-y-1/2 rounded-full border-2 border-bg transition-opacity ${suave} ${ponto} ${
+                      feito ? 'opacity-100' : 'opacity-25'
+                    }`}
+                  />
+                  <span className={i === etapa ? 'font-semibold' : feito ? '' : 'text-fg-muted'}>{rotulo}</span>
+                  <Alterna valores={['—', hora]} atual={feito ? hora : '—'} className="justify-items-end font-mono text-xs text-fg-muted"
+                  />
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+
+        <div className="space-y-4">
+          <div className={bloco}>
+            <p className="text-xs font-medium">Checklist de testes</p>
+            <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+              {testes.map((item) => (
+                <li key={item} className="flex min-w-0 items-center gap-1.5">
+                  <Alterna valores={['ok', 'testando']} atual={etapa >= PRONTO ? 'ok' : 'testando'} className="shrink-0">
+                    {(v) =>
+                      v === 'ok' ? (
+                        <Check className="size-4 text-accent" />
+                      ) : (
+                        <span className="mt-1 block size-2 rounded-full bg-status-testes" />
+                      )
+                    }
+                  </Alterna>
+                  <span className="truncate">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div
+            className={`rounded-card rounded-tl-sm border border-border bg-bg px-3 py-2.5 text-sm transition-opacity ${suave} ${
+              etapa >= PRONTO ? 'opacity-100' : 'opacity-30'
+            }`}
+          >
+            <span className="block text-xs text-fg-muted">WhatsApp · enviado automaticamente</span>
+            Ana, seu iPhone 13 está pronto para retirada.
+            <span className="block text-right text-xs text-fg-muted">16:05</span>
+          </div>
+
+          <div className={bloco}>
+            <p className="flex items-center gap-1.5 text-sm font-medium">
+              <Icone className="size-4 text-accent">
+                <path d="M12 3 5 6v5c0 4.5 3 8.5 7 10 4-1.5 7-5.5 7-10V6z" />
+                <path d="m9 12 2 2 4-4" />
+              </Icone>
+              Garantia até 19/01/2027
+            </p>
+            <p className="mt-2 text-xs text-fg-muted">Reparos anteriores deste aparelho</p>
+            <ul className="mt-1 space-y-1 text-sm">
+              {reparosAnteriores.map(([n, servico, quando]) => (
+                <li key={n} className="flex justify-between gap-2">
+                  <span className="truncate">
+                    <span className="font-mono font-semibold">#{n}</span> · {servico}
+                  </span>
+                  <span className="shrink-0 text-xs text-fg-muted">{quando}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </Moldura>
+  )
+}
+
+// ——— Capítulos ———
+
+const capitulos = [
+  {
+    id: 'balcao',
+    etiqueta: 'No balcão',
+    titulo: 'O aparelho chegou? Registre tudo no atendimento.',
+    texto:
+      'Cliente, aparelho, defeito relatado, acessórios e fotos entram na OS antes de o cliente sair da loja. A etiqueta com QR Code sai na hora e acompanha o aparelho até a bancada.',
+    marcadores: ['Checklist de entrada com fotos', 'Etiqueta com QR Code e impressão térmica', 'Aviso de recebimento por WhatsApp'],
+    Tela: TelaEntrada,
+    intervalo: 1900,
+  },
+  {
+    id: 'bancada',
+    etiqueta: 'Na bancada',
+    titulo: 'Foi para a bancada? Acompanhe sem interromper o técnico.',
+    texto:
+      'Diagnóstico, orçamento e aprovação ficam na OS. O cliente aprova pelo link, a peça sai do estoque e o quadro mostra cada aparelho com a etapa e o técnico responsável.',
+    marcadores: ['Quadro da bancada por técnico', 'Orçamento com peças do estoque', 'Aprovação do cliente por link'],
+    Tela: TelaBancada,
+    intervalo: 2800,
+    // Quadro de 4 colunas: no celular mantém a largura e é recortado pela borda da tela.
+    larguraMinima: true,
+  },
+  {
+    id: 'entrega',
+    etiqueta: 'Na entrega',
+    titulo: 'Ficou pronto? Tenha o histórico até a entrega.',
+    texto:
+      'Checklist de testes, aviso de pronto, garantia e retirada ficam registrados. Se o aparelho voltar, você sabe o que foi feito e quando.',
+    marcadores: ['Checklist de testes', 'Link de acompanhamento para o cliente', 'Histórico e garantia por aparelho'],
+    Tela: TelaEntrega,
+    intervalo: 2600,
+  },
+]
+
+function Capitulo({ indice, etiqueta, titulo, texto, marcadores, Tela, intervalo, larguraMinima }) {
+  const ref = useRef(null)
+  const naTela = useNaTela(ref)
+  const passo = useRelogio(intervalo, naTela)
+  // Capítulo do meio troca de lado no desktop; a tela fica sempre com a coluna larga.
+  const invertido = indice % 2 === 1
+
+  return (
+    <li
+      className={`grid items-center gap-8 lg:gap-14 ${
+        invertido ? 'lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]' : 'lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]'
+      }`}
+    >
+      <div className={invertido ? 'lg:order-2' : undefined}>
+        <p className="flex items-center gap-3 text-sm font-semibold">
+          <span className="font-display text-fg-muted">{String(indice + 1).padStart(2, '0')}</span>
+          <span aria-hidden="true" className="h-0.5 w-8 rounded-full bg-highlight" />
+          {etiqueta}
+        </p>
+        <h3 className="mt-4 text-2xl font-bold tracking-tight md:text-3xl">{titulo}</h3>
+        <p className="mt-4 text-lg text-fg-muted">{texto}</p>
+        <ul role="list" className="mt-6 space-y-2.5">
+          {marcadores.map((item) => (
+            <li key={item} className="flex items-start gap-2.5 font-medium">
+              <Check className="mt-0.5 size-5 shrink-0 text-accent" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <figure ref={ref} className={`min-w-0 ${invertido ? 'lg:order-1' : ''}`}>
+        <div className={larguraMinima ? '-mr-4 md:mr-0' : undefined}>
+          <div className={larguraMinima ? 'min-w-[38rem] md:min-w-0' : undefined}>
+            <Tela passo={passo} />
+          </div>
+        </div>
+        <figcaption className="mt-3 text-xs text-fg-muted">Tela do sistema com dados de exemplo.</figcaption>
+      </figure>
+    </li>
+  )
+}
+
+export default function Jornada() {
+  return (
+    <section id="jornada" aria-labelledby="jornada-titulo" className="section-y overflow-x-clip">
+      <div className="container-page">
+        <h2 id="jornada-titulo" className="max-w-3xl text-3xl font-bold tracking-tight md:text-4xl">
+          Do balcão à entrega: veja uma OS de ponta a ponta.
+        </h2>
+        <p className="mt-4 max-w-2xl text-lg text-fg-muted">
+          Siga um aparelho pela assistência. Estas são as telas que o balcão e a bancada usam todos os dias.
+        </p>
+
+        <ol className="mt-12 space-y-16 lg:mt-16 lg:space-y-24">
+          {capitulos.map(({ id, ...capitulo }, i) => (
+            <Capitulo key={id} indice={i} {...capitulo} />
+          ))}
+        </ol>
+
+        <div className="mt-16 flex flex-col gap-6 rounded-card border border-border bg-surface p-6 md:flex-row md:items-center md:justify-between md:p-8 lg:mt-24">
+          <div>
+            <p className="font-display text-xl font-semibold md:text-2xl">Quer ver isso com os aparelhos da sua loja?</p>
+            <p className="mt-2 text-fg-muted">
+              Na demonstração, a gente percorre o fluxo da sua assistência, do balcão à entrega.
+            </p>
+          </div>
+          <CtaButton className="shrink-0" />
+        </div>
       </div>
     </section>
   )

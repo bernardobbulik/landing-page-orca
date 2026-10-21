@@ -131,13 +131,17 @@ assistência.
 | Landing        | Todo o fluxo da sua assistência em um só lugar.                |
 | Posicionamento | A operação da sua assistência começa aqui.                     |
 
-Hero de referência (já aplicado em `Hero.jsx`):
+Hero aplicado em `Hero.jsx` (revisão de UX de vendas: promessa mais específica
+sobre o benefício):
 
-> **Sua assistência. Em fluxo.**
-> Controle cada aparelho desde a entrada até a entrega. Recepção, diagnóstico,
-> orçamento, aprovação, reparo e testes em um único fluxo.
-> [Agendar demonstração]
-> Feito para assistências técnicas de celulares.
+> Gestão para assistências técnicas de celulares
+> **Sua assistência organizada, do primeiro atendimento até a entrega.**
+> Chega de procurar ordens de serviço, perguntar ao técnico sobre um aparelho ou
+> perder informações no balcão. Com a Exotek, você acompanha cada etapa em um só
+> lugar.
+> [Agendar demonstração] · Conhecer o sistema
+
+"Sua assistência. Em fluxo." continua aprovada como frase de apoio.
 
 O botão é sempre **"Agendar demonstração"** (ação única definida no
 `CLAUDE.md`). A sugestão original "Começar agora" foi descartada.
