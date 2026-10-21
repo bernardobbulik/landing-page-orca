@@ -98,13 +98,15 @@ function CartaoDepoimento({ citacao, nome, funcao, empresa, duble }) {
   )
 }
 
-const botaoControle =
-  'grid size-11 place-items-center rounded-button border border-border bg-surface text-fg transition-colors hover:border-accent'
+const botaoSeta =
+  'grid size-11 place-items-center rounded-full border border-border bg-surface text-fg transition-colors hover:border-accent hover:text-accent'
 
 // Carrossel que avança sempre para a esquerda. O trilho tem clones nas pontas
 // ([último, ...depoimentos, primeiro]); ao parar num clone, salta sem transição
-// para o slide real equivalente. Pausa com o botão, com o mouse em cima, com foco
-// de teclado dentro e com a aba oculta. Com prefers-reduced-motion não avança sozinho.
+// para o slide real equivalente. Navegação manual pelas setas < >; depois dela o
+// tempo recomeça e o carrossel volta a andar sozinho. Pausa só enquanto o mouse está
+// sobre o cartão (leitura), com foco de teclado dentro e com a aba oculta.
+// Com prefers-reduced-motion não avança sozinho.
 function CarrosselDepoimentos({ itens, duble }) {
   const total = itens.length
   const loop = total > 1
@@ -112,7 +114,6 @@ function CarrosselDepoimentos({ itens, duble }) {
 
   const [posicao, setPosicao] = useState(loop ? 1 : 0)
   const [comTransicao, setComTransicao] = useState(true)
-  const [pausadoPeloUsuario, setPausadoPeloUsuario] = useState(false)
   const [emHover, setEmHover] = useState(false)
   const [emFoco, setEmFoco] = useState(false)
   const reduzir = useSyncExternalStore(assinarReduzir, lerReduzir)
@@ -124,7 +125,7 @@ function CarrosselDepoimentos({ itens, duble }) {
   const animacao = useRef(null)
 
   const autoplay = loop && !reduzir
-  const rodando = autoplay && !pausadoPeloUsuario && !emHover && !emFoco && !abaOculta
+  const rodando = autoplay && !emHover && !emFoco && !abaOculta
   const atual = loop ? (posicao - 1 + total) % total : 0
 
   const mover = useCallback((passo) => {
@@ -186,14 +187,13 @@ function CarrosselDepoimentos({ itens, duble }) {
     else anim.pause()
   }, [rodando, atual, autoplay])
 
+  // Celular: cartão em cima e "< pontos >" embaixo. Desktop: setas nas laterais do cartão.
   return (
     <div
       role="region"
       aria-roledescription="carrossel"
       aria-label="Depoimentos de clientes"
-      className="mt-6"
-      onPointerEnter={(e) => e.pointerType === 'mouse' && setEmHover(true)}
-      onPointerLeave={(e) => e.pointerType === 'mouse' && setEmHover(false)}
+      className="mt-6 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-4 [grid-template-areas:'cartao_cartao_cartao'_'anterior_pontos_proximo'] md:gap-x-4 md:[grid-template-areas:'anterior_cartao_proximo'_'._pontos_.']"
       onFocus={(e) => e.target.matches(':focus-visible') && setEmFoco(true)}
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setEmFoco(false)}
       onKeyDown={(e) => {
@@ -202,7 +202,24 @@ function CarrosselDepoimentos({ itens, duble }) {
         if (e.key === 'ArrowLeft') mover(-1)
       }}
     >
-      <div className="overflow-hidden rounded-card">
+      {loop && (
+        <button
+          type="button"
+          onClick={() => mover(-1)}
+          aria-label="Depoimento anterior"
+          className={`${botaoSeta} [grid-area:anterior]`}
+        >
+          <Icone>
+            <path d="m15 18-6-6 6-6" />
+          </Icone>
+        </button>
+      )}
+
+      <div
+        className="overflow-hidden rounded-card [grid-area:cartao]"
+        onPointerEnter={(e) => e.pointerType === 'mouse' && setEmHover(true)}
+        onPointerLeave={(e) => e.pointerType === 'mouse' && setEmHover(false)}
+      >
         <div
           aria-live={rodando ? 'off' : 'polite'}
           className={`flex touch-pan-y ${comTransicao ? 'transition-transform duration-700 ease-out' : ''}`}
@@ -242,60 +259,42 @@ function CarrosselDepoimentos({ itens, duble }) {
       </div>
 
       {loop && (
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <div className="flex items-center">
-            {itens.map((depoimento, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => irPara(i)}
-                aria-label={`Mostrar depoimento ${i + 1} de ${total}`}
-                aria-current={i === atual || undefined}
-                className="group grid h-11 place-items-center px-1.5"
-              >
-                {i === atual ? (
-                  <span className="block h-1.5 w-10 overflow-hidden rounded-full bg-border">
-                    <span
-                      ref={barra}
-                      className="block h-full origin-left rounded-full bg-accent"
-                      style={autoplay ? { transform: 'scaleX(0)' } : undefined}
-                    />
-                  </span>
-                ) : (
-                  <span className="block h-1.5 w-4 rounded-full bg-fg-muted transition-colors group-hover:bg-accent" />
-                )}
-              </button>
-            ))}
-          </div>
+        <button
+          type="button"
+          onClick={() => mover(1)}
+          aria-label="Próximo depoimento"
+          className={`${botaoSeta} [grid-area:proximo]`}
+        >
+          <Icone>
+            <path d="m9 18 6-6-6-6" />
+          </Icone>
+        </button>
+      )}
 
-          <div className="flex items-center gap-2">
-            {autoplay && (
-              <button
-                type="button"
-                onClick={() => setPausadoPeloUsuario((p) => !p)}
-                aria-label={pausadoPeloUsuario ? 'Retomar depoimentos' : 'Pausar depoimentos'}
-                className={botaoControle}
-              >
-                <Icone>
-                  {pausadoPeloUsuario ? (
-                    <path d="M8 5.5v13l10-6.5z" />
-                  ) : (
-                    <path d="M9 5.5v13M15 5.5v13" />
-                  )}
-                </Icone>
-              </button>
-            )}
-            <button type="button" onClick={() => mover(-1)} aria-label="Depoimento anterior" className={botaoControle}>
-              <Icone>
-                <path d="m15 18-6-6 6-6" />
-              </Icone>
+      {loop && (
+        <div className="flex items-center justify-self-center [grid-area:pontos]">
+          {itens.map((depoimento, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => irPara(i)}
+              aria-label={`Mostrar depoimento ${i + 1} de ${total}`}
+              aria-current={i === atual || undefined}
+              className="group grid h-11 place-items-center px-1.5"
+            >
+              {i === atual ? (
+                <span className="block h-1.5 w-10 overflow-hidden rounded-full bg-border">
+                  <span
+                    ref={barra}
+                    className="block h-full origin-left rounded-full bg-accent"
+                    style={autoplay ? { transform: 'scaleX(0)' } : undefined}
+                  />
+                </span>
+              ) : (
+                <span className="block h-1.5 w-4 rounded-full bg-fg-muted transition-colors group-hover:bg-accent" />
+              )}
             </button>
-            <button type="button" onClick={() => mover(1)} aria-label="Próximo depoimento" className={botaoControle}>
-              <Icone>
-                <path d="m9 18 6-6-6-6" />
-              </Icone>
-            </button>
-          </div>
+          ))}
         </div>
       )}
     </div>
