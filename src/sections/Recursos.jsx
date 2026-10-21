@@ -380,7 +380,7 @@ export default function Recursos() {
           {recursos.map(({ titulo, texto, icone, detalhe, largo }) => (
             <li
               key={titulo}
-              className={`flex flex-col rounded-card border border-border bg-surface p-5 md:p-6 ${
+              className={`flex cursor-pointer flex-col rounded-card border border-border bg-surface p-5 transition-colors hover:border-accent md:p-6 ${
                 largo ? 'lg:col-span-2' : ''
               }`}
             >
