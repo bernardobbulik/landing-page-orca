@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 
 // Status por passo: tokens --color-status-* de tokens.css. A cor fica só no ponto; o rótulo vai em texto.
 const PASSOS = [
@@ -77,6 +77,12 @@ const PASSOS = [
 ]
 
 const ULTIMO = PASSOS.length - 1
+
+// Modo fixado (desktop com altura suficiente): a seção trava sob o header e cada PASSO_ROLAGEM px
+// de rolagem avança uma etapa. A página só segue depois de a última etapa ficar um trecho na tela.
+const PASSO_ROLAGEM = 280
+const TOPO_FIXO = 64 // altura do header sticky (top-16)
+const FOLGA_FIXO = 48 // py-6 da caixa fixada
 
 const TECLAS = {
   ArrowRight: (i) => i + 1,
@@ -162,8 +168,20 @@ function Seta({ className = '' }) {
   )
 }
 
-function NavPassos({ indice, aoNavegar }) {
+function NavPassos({ indice, aoNavegar, fixado }) {
   const ultimo = indice === ULTIMO
+  // Fixado, quem avança é a rolagem: no lugar dos botões fica a deixa, com a mesma altura.
+  if (fixado) {
+    return ultimo ? (
+      <BotaoPlanos />
+    ) : (
+      <p className="inline-flex min-h-11 items-center gap-2 text-sm text-fg-muted">
+        Role para a próxima:
+        <span className="font-semibold text-fg">{PASSOS[indice + 1].titulo}</span>
+        <Seta className="rotate-90" />
+      </p>
+    )
+  }
   return (
     <div className="flex flex-wrap items-center gap-3">
       {indice > 0 && (
@@ -264,18 +282,66 @@ export default function Jornada() {
   const [explorou, setExplorou] = useState(false)
   const [movimento, setMovimento] = useState('frente')
   const [saindo, setSaindo] = useState(null)
+  const [fixado, setFixado] = useState(false)
   const botoes = useRef([])
+  const trilho = useRef(null)
+  const conteudo = useRef(null)
   const itens = useRef([])
   const quadro = useRef(null)
   const focoPendente = useRef(null)
 
-  // Rola até o passo só depois de uma ação do usuário; suave apenas sem prefers-reduced-motion.
+  // Fixa só no desktop e quando a seção inteira cabe abaixo do header; senão fica o modo de clique.
   useEffect(() => {
-    if (!explorou) return
+    const desktop = window.matchMedia('(min-width: 48rem)')
+    const medir = () => {
+      const altura = conteudo.current.offsetHeight + FOLGA_FIXO
+      setFixado(desktop.matches && altura <= window.innerHeight - TOPO_FIXO)
+    }
+    medir()
+    const observador = new ResizeObserver(medir)
+    observador.observe(conteudo.current)
+    window.addEventListener('resize', medir)
+    return () => {
+      observador.disconnect()
+      window.removeEventListener('resize', medir)
+    }
+  }, [])
+
+  // Fixado, a posição de rolagem é a fonte da verdade: cada trecho do trilho corresponde a uma etapa.
+  const seguirRolagem = useEffectEvent(() => {
+    const rolado = TOPO_FIXO - trilho.current.getBoundingClientRect().top
+    ir(Math.min(Math.max(Math.floor(rolado / PASSO_ROLAGEM), 0), ULTIMO))
+  })
+
+  useEffect(() => {
+    if (!fixado) return
+    let quadroPendente = 0
+    const aoRolar = () => {
+      if (quadroPendente) return
+      quadroPendente = requestAnimationFrame(() => {
+        quadroPendente = 0
+        seguirRolagem()
+      })
+    }
+    seguirRolagem()
+    window.addEventListener('scroll', aoRolar, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', aoRolar)
+      cancelAnimationFrame(quadroPendente)
+    }
+  }, [fixado])
+
+  // Rola até o passo só depois de uma ação do usuário; suave apenas sem prefers-reduced-motion.
+  const rolarAteAtivo = useEffectEvent(() => {
+    if (!explorou || fixado) return
     const reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const desktop = window.matchMedia('(min-width: 48rem)').matches
     const alvo = desktop ? quadro.current : itens.current[ativo]
     alvo?.scrollIntoView({ block: 'nearest', behavior: reduzido ? 'auto' : 'smooth' })
+  })
+
+  useEffect(() => {
+    rolarAteAtivo()
   }, [ativo, explorou])
 
   // No celular o painel muda de <li> e os botões Anterior/Próxima são recriados: devolve o foco a eles.
@@ -304,6 +370,14 @@ export default function Jornada() {
     setAtivo(indice)
   }
 
+  // Fixado, clique e teclado levam a rolagem ao meio do trecho da etapa; o scroll faz o resto.
+  // Sem behavior: vale o scroll-behavior do html (suave, ou instantâneo com reduced-motion).
+  function irPara(indice) {
+    if (!fixado) return ir(indice)
+    const inicio = trilho.current.getBoundingClientRect().top + window.scrollY - TOPO_FIXO
+    window.scrollTo({ top: inicio + (indice + 0.5) * PASSO_ROLAGEM })
+  }
+
   function navegarPeloPainel(indice, tipo) {
     focoPendente.current = tipo
     ir(indice)
@@ -314,140 +388,170 @@ export default function Jornada() {
     if (!destino) return
     event.preventDefault()
     const novo = Math.min(Math.max(destino(indice), 0), ULTIMO)
-    ir(novo)
+    irPara(novo)
     botoes.current[novo]?.focus({ preventScroll: true })
   }
 
-  const nav = <NavPassos indice={ativo} aoNavegar={navegarPeloPainel} />
+  const nav = <NavPassos indice={ativo} aoNavegar={navegarPeloPainel} fixado={fixado} />
 
   return (
-    <section id="jornada" aria-labelledby="jornada-titulo" className="section-y">
-      <div className="container-page">
-        <h2 id="jornada-titulo" className="text-3xl font-bold tracking-tight md:text-4xl">
-          Do balcão à bancada, cada etapa registrada.
-        </h2>
-        <p className="mt-4 max-w-2xl text-lg text-fg-muted">
-          Da bancada ao cliente. Veja o que a equipe registra em cada etapa da ordem de serviço.
-        </p>
+    <section id="jornada" aria-labelledby="jornada-titulo" className={fixado ? undefined : 'section-y'}>
+      <div ref={trilho}>
+        <div
+          className={
+            fixado ? 'sticky top-16 flex min-h-[calc(100svh-4rem)] flex-col justify-center py-6' : undefined
+          }
+        >
+          <div ref={conteudo} className="container-page">
+            <h2 id="jornada-titulo" className="text-3xl font-bold tracking-tight md:text-4xl">
+              Do balcão à bancada, cada etapa registrada.
+            </h2>
+            <p className="mt-4 max-w-2xl text-lg text-fg-muted">
+              Da bancada ao cliente. Veja o que a equipe registra em cada etapa da ordem de serviço.
+            </p>
 
-        <div ref={quadro} className="mt-10 scroll-mt-20 scroll-mb-4">
-          <p id="jornada-dica" className="mb-6 flex items-center gap-2 text-sm text-fg-muted">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              focusable="false"
-              className="size-5 shrink-0 text-accent"
-            >
-              <path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-1.5a1.5 1.5 0 0 1 3 0V11m0-1a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.9-2.6L4.6 14a1.5 1.5 0 0 1 2.4-1.8L9 14.5" />
-            </svg>
-            <span className="md:hidden">Toque em uma etapa ou use “Próxima” para seguir o aparelho.</span>
-            <span className="hidden md:inline">
-              Clique em uma etapa, use “Próxima” ou as setas do teclado para seguir o aparelho.
-            </span>
-          </p>
-
-          <ol
-            aria-label="Etapas da ordem de serviço"
-            aria-describedby="jornada-dica"
-            className="md:grid md:grid-cols-6"
-          >
-            {PASSOS.map((passo, i) => {
-              const atual = i === ativo
-              const feito = i < ativo
-              const convida = !explorou && i === ativo + 1
-              return (
-                <li
-                  key={passo.id}
-                  ref={(el) => {
-                    itens.current[i] = el
-                  }}
-                  className="relative scroll-mt-20 scroll-mb-4 pb-6 last:pb-0 md:pb-0"
+            <div ref={quadro} className="mt-10 scroll-mt-20 scroll-mb-4">
+              <p id="jornada-dica" className="mb-6 flex items-center gap-2 text-sm text-fg-muted">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                  className="size-5 shrink-0 text-accent"
                 >
-                  {i < ULTIMO && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute top-11 bottom-1 left-[calc(1.125rem-1px)] w-0.5 bg-border md:top-[calc(1.125rem-1px)] md:right-3 md:bottom-auto md:left-12 md:h-0.5 md:w-auto"
-                    >
-                      <span
-                        className={`absolute inset-0 origin-top bg-highlight transition-transform duration-500 md:origin-left ${
-                          feito ? 'scale-100' : 'scale-y-0 md:scale-x-0 md:scale-y-100'
-                        }`}
-                      />
-                    </span>
+                  {fixado ? (
+                    <>
+                      <rect x="6" y="3" width="12" height="18" rx="6" />
+                      <path d="M12 7v3" />
+                    </>
+                  ) : (
+                    <path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-1.5a1.5 1.5 0 0 1 3 0V11m0-1a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.9-2.6L4.6 14a1.5 1.5 0 0 1 2.4-1.8L9 14.5" />
                   )}
-                  <button
-                    type="button"
-                    ref={(el) => {
-                      botoes.current[i] = el
-                    }}
-                    aria-current={atual ? 'step' : undefined}
-                    tabIndex={atual ? 0 : -1}
-                    onClick={() => ir(i)}
-                    onKeyDown={(event) => aoTeclar(event, i)}
-                    className="group flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-button text-left md:w-auto md:flex-col md:items-start md:pr-3"
-                  >
-                    <span className="relative flex size-9 shrink-0">
-                      {/* Pulso no próximo passo até a primeira interação: mostra onde clicar. */}
-                      {convida && (
+                </svg>
+                {fixado ? (
+                  <span>Role a página para seguir o aparelho, ou clique em uma etapa.</span>
+                ) : (
+                  <>
+                    <span className="md:hidden">
+                      Toque em uma etapa ou use “Próxima” para seguir o aparelho.
+                    </span>
+                    <span className="hidden md:inline">
+                      Clique em uma etapa, use “Próxima” ou as setas do teclado para seguir o aparelho.
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <ol
+                aria-label="Etapas da ordem de serviço"
+                aria-describedby="jornada-dica"
+                className="md:grid md:grid-cols-6"
+              >
+                {PASSOS.map((passo, i) => {
+                  const atual = i === ativo
+                  const feito = i < ativo
+                  const convida = !explorou && !fixado && i === ativo + 1
+                  return (
+                    <li
+                      key={passo.id}
+                      ref={(el) => {
+                        itens.current[i] = el
+                      }}
+                      className="relative scroll-mt-20 scroll-mb-4 pb-6 last:pb-0 md:pb-0"
+                    >
+                      {i < ULTIMO && (
                         <span
                           aria-hidden="true"
-                          className="absolute inset-0 animate-ping rounded-full border-2 border-accent"
+                          className="absolute top-11 bottom-1 left-[calc(1.125rem-1px)] w-0.5 bg-border md:top-[calc(1.125rem-1px)] md:right-3 md:bottom-auto md:left-12 md:h-0.5 md:w-auto"
+                        >
+                          <span
+                            className={`absolute inset-0 origin-top bg-highlight transition-transform duration-500 md:origin-left ${
+                              feito ? 'scale-100' : 'scale-y-0 md:scale-x-0 md:scale-y-100'
+                            }`}
+                          />
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        ref={(el) => {
+                          botoes.current[i] = el
+                        }}
+                        aria-current={atual ? 'step' : undefined}
+                        tabIndex={atual ? 0 : -1}
+                        onClick={() => irPara(i)}
+                        onKeyDown={(event) => aoTeclar(event, i)}
+                        className="group flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-button text-left md:w-auto md:flex-col md:items-start md:pr-3"
+                      >
+                        <span className="relative flex size-9 shrink-0">
+                          {/* Pulso no próximo passo até a primeira interação: mostra onde clicar. */}
+                          {convida && (
+                            <span
+                              aria-hidden="true"
+                              className="absolute inset-0 animate-ping rounded-full border-2 border-accent"
+                            />
+                          )}
+                          <span
+                            aria-hidden="true"
+                            className={`relative flex size-9 items-center justify-center rounded-full border-2 font-display text-sm font-semibold transition-transform duration-200 group-hover:scale-110 ${
+                              atual
+                                ? 'border-accent bg-accent text-on-accent'
+                                : feito
+                                  ? 'border-accent bg-surface text-fg'
+                                  : 'border-border bg-surface text-fg-muted group-hover:border-accent'
+                            }`}
+                          >
+                            {i + 1}
+                          </span>
+                        </span>
+                        <span
+                          className={`md:text-sm ${
+                            atual
+                              ? 'font-semibold text-fg'
+                              : 'text-fg-muted underline-offset-4 group-hover:text-fg group-hover:underline'
+                          }`}
+                        >
+                          {passo.titulo}
+                        </span>
+                      </button>
+                      {atual && (
+                        <Painel
+                          indice={i}
+                          movimento={movimento}
+                          nav={nav}
+                          className="mt-4 grid pl-12 md:hidden"
                         />
                       )}
-                      <span
-                        aria-hidden="true"
-                        className={`relative flex size-9 items-center justify-center rounded-full border-2 font-display text-sm font-semibold transition-transform duration-200 group-hover:scale-110 ${
-                          atual
-                            ? 'border-accent bg-accent text-on-accent'
-                            : feito
-                              ? 'border-accent bg-surface text-fg'
-                              : 'border-border bg-surface text-fg-muted group-hover:border-accent'
-                        }`}
-                      >
-                        {i + 1}
-                      </span>
-                    </span>
-                    <span
-                      className={`md:text-sm ${
-                        atual
-                          ? 'font-semibold text-fg'
-                          : 'text-fg-muted underline-offset-4 group-hover:text-fg group-hover:underline'
-                      }`}
-                    >
-                      {passo.titulo}
-                    </span>
-                  </button>
-                  {atual && (
-                    <Painel indice={i} movimento={movimento} nav={nav} className="mt-4 grid pl-12 md:hidden" />
-                  )}
-                </li>
-              )
-            })}
-          </ol>
+                    </li>
+                  )
+                })}
+              </ol>
 
-          <div className="relative mt-10 hidden md:block">
-            {saindo && (
-              <div aria-hidden="true" inert className="pointer-events-none absolute inset-x-0 top-0">
-                <Painel
-                  key={`saindo-${saindo.indice}`}
-                  indice={saindo.indice}
-                  movimento={saindo.movimento}
-                  saindo
-                  comTitulo
-                  className="grid"
-                />
+              <div className="relative mt-10 hidden md:block">
+                {saindo && (
+                  <div aria-hidden="true" inert className="pointer-events-none absolute inset-x-0 top-0">
+                    <Painel
+                      key={`saindo-${saindo.indice}`}
+                      indice={saindo.indice}
+                      movimento={saindo.movimento}
+                      saindo
+                      comTitulo
+                      className="grid"
+                    />
+                  </div>
+                )}
+                <Painel indice={ativo} movimento={movimento} comTitulo nav={nav} className="grid" />
               </div>
-            )}
-            <Painel indice={ativo} movimento={movimento} comTitulo nav={nav} className="grid" />
+            </div>
           </div>
         </div>
+        {/* Pista de rolagem: um trecho por etapa enquanto a caixa acima fica presa sob o header. */}
+        {fixado && <div aria-hidden="true" style={{ height: PASSOS.length * PASSO_ROLAGEM }} />}
       </div>
     </section>
   )
