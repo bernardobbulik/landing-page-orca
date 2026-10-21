@@ -78,9 +78,14 @@ const PASSOS = [
 
 const ULTIMO = PASSOS.length - 1
 
-// Modo fixado (desktop com altura suficiente): a seção trava sob o header e cada PASSO_ROLAGEM px
-// de rolagem avança uma etapa. A página só segue depois de a última etapa ficar um trecho na tela.
-const PASSO_ROLAGEM = 280
+// Modo fixado (desktop com altura suficiente): a seção trava sob o header e cada giro da roda do mouse
+// avança uma etapa. Cada etapa ocupa PASSO_ROLAGEM px do trilho; parada no meio do trecho, o giro seguinte
+// depois da última etapa (~100 px) já solta a página.
+const PASSO_ROLAGEM = 120
+// Giros a menos de GIRO_NOVO_MS um do outro são o mesmo gesto (um giro rápido, inércia do trackpad).
+// Girando sem parar, avança uma etapa a cada GIRO_CONTINUO_MS.
+const GIRO_NOVO_MS = 150
+const GIRO_CONTINUO_MS = 600
 const TOPO_FIXO = 64 // altura do header sticky (top-16)
 const FOLGA_FIXO = 48 // py-6 da caixa fixada
 
@@ -329,6 +334,33 @@ export default function Jornada() {
       window.removeEventListener('scroll', aoRolar)
       cancelAnimationFrame(quadroPendente)
     }
+  }, [fixado])
+
+  // Roda do mouse com a seção presa: um gesto = uma etapa. Antes da primeira e depois da última,
+  // a rolagem nativa segue e a página solta.
+  const girosRoda = useRef({ ultimo: 0, avanco: 0 })
+  const aoGirar = useEffectEvent((event) => {
+    if (event.ctrlKey || event.deltaY === 0) return
+    const rolado = TOPO_FIXO - trilho.current.getBoundingClientRect().top
+    if (rolado < 0 || rolado >= PASSOS.length * PASSO_ROLAGEM) return
+    const atual = Math.min(Math.floor(rolado / PASSO_ROLAGEM), ULTIMO)
+    const destino = atual + Math.sign(event.deltaY)
+    if (destino < 0 || destino > ULTIMO) return
+    event.preventDefault()
+    const giros = girosRoda.current
+    const agora = event.timeStamp
+    const novoGesto = agora - giros.ultimo > GIRO_NOVO_MS || agora - giros.avanco > GIRO_CONTINUO_MS
+    giros.ultimo = agora
+    if (!novoGesto) return
+    giros.avanco = agora
+    const inicio = rolado - window.scrollY
+    window.scrollTo({ top: (destino + 0.5) * PASSO_ROLAGEM - inicio, behavior: 'instant' })
+  })
+
+  useEffect(() => {
+    if (!fixado) return
+    window.addEventListener('wheel', aoGirar, { passive: false })
+    return () => window.removeEventListener('wheel', aoGirar)
   }, [fixado])
 
   // Rola até o passo só depois de uma ação do usuário; suave apenas sem prefers-reduced-motion.
