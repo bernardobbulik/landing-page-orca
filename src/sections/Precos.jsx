@@ -37,6 +37,10 @@ function formatarPreco(valor) {
   }).format(valor)
 }
 
+// Botão âmbar só nesta seção (pedido do coordenador). Texto precisa ser #09090B
+// (9,6:1; o claro dá 2,1:1): é fg no cartão claro e on-accent no escuro.
+const botaoAmbar = 'bg-status-aguardando! hover:bg-accent-hover! hover:text-on-accent!'
+
 const limites = [
   { campo: 'usuarios', rotulo: 'Usuários' },
   { campo: 'ordensDeServico', rotulo: 'Ordens de serviço' },
@@ -88,7 +92,7 @@ function CartaoPlano({ plano }) {
       </ul>
 
       <div className="mt-auto pt-8">
-        <CtaButton className="w-full" />
+        <CtaButton className={`w-full ${botaoAmbar} ${destaque ? 'text-on-accent!' : 'text-fg!'}`} />
       </div>
     </li>
   )
