@@ -1,0 +1,29 @@
+{
+  "_instrucoes": [
+    "Só dados reais, com autorização do cliente citado. Troque cada [PREENCHER].",
+    "Item com campo vazio ou com [PREENCHER] é rascunho: aparece marcado em desenvolvimento (npm run dev) e NÃO aparece no build de produção. Se nada estiver preenchido, a seção inteira some em produção.",
+    "numeros.valor: o número já formatado, com unidade (%, min, dias...). numeros.rotulo: o que foi medido. numeros.fonte: opcional, base da medição (quem, período); use \"\" para não exibir.",
+    "depoimentos.citacao: o texto do cliente, sem aspas. depoimentos.foto: nome do arquivo em src/assets/resultados/ (WebP, quadrada, mínimo 112x112 px). Se existir um .avif com o mesmo nome, ele é usado automaticamente."
+  ],
+  "numeros": [
+    { "valor": "[PREENCHER]", "rotulo": "[PREENCHER]", "fonte": "[PREENCHER]" },
+    { "valor": "[PREENCHER]", "rotulo": "[PREENCHER]", "fonte": "[PREENCHER]" },
+    { "valor": "[PREENCHER]", "rotulo": "[PREENCHER]", "fonte": "[PREENCHER]" }
+  ],
+  "depoimentos": [
+    {
+      "citacao": "[PREENCHER]",
+      "nome": "[PREENCHER]",
+      "funcao": "[PREENCHER]",
+      "empresa": "[PREENCHER]",
+      "foto": "[PREENCHER]"
+    },
+    {
+      "citacao": "[PREENCHER]",
+      "nome": "[PREENCHER]",
+      "funcao": "[PREENCHER]",
+      "empresa": "[PREENCHER]",
+      "foto": "[PREENCHER]"
+    }
+  ]
+}
