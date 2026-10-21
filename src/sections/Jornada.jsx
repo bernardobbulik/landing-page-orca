@@ -177,16 +177,55 @@ function NavPassos({ indice, aoNavegar }) {
           Anterior
         </button>
       )}
-      <button
-        type="button"
-        data-nav="proxima"
-        onClick={() => aoNavegar(ultimo ? 0 : indice + 1, 'proxima')}
-        className="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-button border-2 border-accent bg-surface px-4 text-sm font-semibold text-accent"
-      >
-        {ultimo ? 'Ver de novo desde a entrada' : `Próxima: ${PASSOS[indice + 1].titulo}`}
-        <Seta className="transition-transform duration-200 group-hover:translate-x-1" />
-      </button>
+      {ultimo ? (
+        <BotaoPlanos />
+      ) : (
+        <button
+          type="button"
+          data-nav="proxima"
+          onClick={() => aoNavegar(indice + 1, 'proxima')}
+          className="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-button border-2 border-accent bg-surface px-4 text-sm font-semibold text-accent"
+        >
+          {`Próxima: ${PASSOS[indice + 1].titulo}`}
+          <Seta className="transition-transform duration-200 group-hover:translate-x-1" />
+        </button>
+      )}
     </div>
+  )
+}
+
+// Fecho da Jornada. Exceções ao brandkit aprovadas para este botão: fundo âmbar (status-aguardando,
+// texto fg ~9:1) e reflexo metálico. O reflexo roda via WAAPI, que o reset global não alcança,
+// por isso a checagem explícita de prefers-reduced-motion.
+function BotaoPlanos() {
+  const brilho = useRef(null)
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const animacao = brilho.current?.animate(
+      [{ translate: '-120% 0' }, { translate: '320% 0', offset: 0.4 }, { translate: '320% 0' }],
+      { duration: 2800, delay: 300, iterations: Infinity, easing: 'ease-in-out' },
+    )
+    return () => animacao?.cancel()
+  }, [])
+
+  return (
+    <a
+      href="#precos"
+      data-nav="proxima"
+      className="group relative inline-flex min-h-11 items-center gap-2 overflow-hidden rounded-button bg-status-aguardando px-5 py-3 font-semibold text-fg transition-transform duration-200 ease-out hover:-translate-y-0.5"
+    >
+      <span
+        ref={brilho}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -translate-x-[120%] -skew-x-20 bg-linear-to-r from-transparent via-surface/70 to-transparent"
+      />
+      <span className="relative">
+        <span className="whitespace-nowrap">Agora é com você.</span>{' '}
+        <span className="whitespace-nowrap">Ver planos</span>
+      </span>
+      <Seta className="relative transition-transform duration-200 group-hover:translate-x-1" />
+    </a>
   )
 }
 
