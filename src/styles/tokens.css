@@ -82,10 +82,10 @@
   --radius-card: 0.75rem;
   --radius-button: 0.5rem;
 
-  --spacing-section: 4rem;
-  --spacing-section-lg: 6rem;
+  --spacing-section: 3rem;
+  --spacing-section-lg: 4.5rem;
 
-  --container-page: 72rem;
+  --container-page: 80rem;
 }
 
 @utility container-page {
@@ -96,6 +96,10 @@
 
   @variant md {
     padding-inline: 2rem;
+  }
+
+  @variant lg {
+    padding-inline: 2.5rem;
   }
 }
 
@@ -122,9 +126,13 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /*
+   * --exo-* e não --color-*: as variáveis do @theme são resolvidas no :root
+   * e ficariam com os valores claros dentro da seção escura.
+   */
   [data-surface] {
-    background-color: var(--color-bg);
-    color: var(--color-fg);
+    background-color: var(--exo-bg);
+    color: var(--exo-fg);
   }
 
   h1,
@@ -150,9 +158,19 @@
 
   /* Foco visível em tudo que é interativo; nunca remover. */
   :focus-visible {
-    outline: 3px solid var(--color-focus);
+    outline: 3px solid var(--exo-focus);
     outline-offset: 3px;
     border-radius: 2px;
+  }
+
+  /*
+   * Faixas alternadas: seções claras pares ganham fundo surface e bordas de ponta
+   * a ponta, para a página ler como uma sequência contínua e não como blocos
+   * soltos no mesmo fundo. Seções com data-surface mantêm o próprio fundo.
+   */
+  main > section:nth-of-type(even):not([data-surface]) {
+    background-color: var(--exo-surface);
+    border-block: 1px solid var(--exo-border);
   }
 
   /* Âncoras não ficam escondidas atrás do header fixo. */

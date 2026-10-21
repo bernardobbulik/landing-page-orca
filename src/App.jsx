@@ -19,7 +19,7 @@ export default function App() {
         Pular para o conteúdo
       </a>
 
-      <header className="sticky top-0 z-40 border-b border-border bg-bg/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-border bg-bg">
         <div className="container-page flex h-16 items-center justify-between gap-4">
           <a href="#topo" className="shrink-0">
             <Logo className="h-7 w-auto sm:h-8" />
