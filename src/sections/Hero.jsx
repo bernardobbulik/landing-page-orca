@@ -1,53 +1,58 @@
 import { useEffect, useState } from 'react'
 import CtaButton from '../components/CtaButton.jsx'
 
-// Dados ilustrativos do painel (interface de exemplo, não são clientes reais).
-// Listas com tamanhos primos entre si (11, 9, 13): nenhuma linha repete o valor do
-// tick anterior e a mesma combinação só volta depois de centenas de ordens.
-const aparelhos = [
-  'Redmi Note 12', 'Moto G84', 'Galaxy A54', 'iPhone 13', 'Galaxy S23', 'iPhone 11',
-  'Moto E22', 'Redmi 13C', 'iPhone 14 Pro', 'Galaxy A15', 'Poco X6',
-]
-const defeitos = [
-  'Não liga', 'Conector de carga', 'Bateria', 'Troca de tela', 'Face ID', 'Alto-falante',
-  'Câmera traseira', 'Tela trincada', 'Microfone',
-]
-const clientes = [
-  'Rafael S.', 'Juliana R.', 'Carlos M.', 'Ana P.', 'Marcos T.', 'Beatriz L.', 'Pedro H.',
-  'Larissa F.', 'Thiago A.', 'Camila N.', 'Bruno C.', 'Fernanda O.', 'Lucas V.',
-]
-
-// Etapas da OS, na ordem. Cor do status só no ponto; o rótulo é sempre texto em fg.
+// Etapas da OS, na ordem, com o aviso que cada uma gera. Cor do status só no ponto;
+// o rótulo é sempre texto em fg.
 const etapas = [
-  { rotulo: 'Recebido', ponto: 'bg-status-recebido' },
-  { rotulo: 'Diagnóstico', ponto: 'bg-status-diagnostico' },
-  { rotulo: 'Em orçamento', ponto: 'bg-status-aguardando' },
-  { rotulo: 'Aprovado', ponto: 'bg-status-aprovado' },
-  { rotulo: 'Em reparo', ponto: 'bg-status-reparo' },
-  { rotulo: 'Testes', ponto: 'bg-status-testes' },
-  { rotulo: 'Pronto', ponto: 'bg-status-pronto' },
+  { rotulo: 'Recebido', ponto: 'bg-status-recebido', aviso: 'Nova OS registrada no balcão' },
+  { rotulo: 'Diagnóstico', ponto: 'bg-status-diagnostico', aviso: 'Diagnóstico iniciado na bancada' },
+  { rotulo: 'Em orçamento', ponto: 'bg-status-aguardando', aviso: 'Orçamento enviado ao cliente' },
+  { rotulo: 'Aprovado', ponto: 'bg-status-aprovado', aviso: 'Orçamento aprovado pelo cliente' },
+  { rotulo: 'Em reparo', ponto: 'bg-status-reparo', aviso: 'Reparo iniciado pelo técnico' },
+  { rotulo: 'Testes', ponto: 'bg-status-testes', aviso: 'Aparelho em testes finais' },
+  { rotulo: 'Pronto', ponto: 'bg-status-pronto', aviso: 'Aparelho pronto para retirada' },
 ]
 // Etapa inicial de cada linha (de cima para baixo); a cada tick todas avançam uma.
-const etapaInicial = [2, 4, 5, 6]
+const etapaInicial = [3, 4, 5, 6, 1]
+
+// Dados ilustrativos (interface de exemplo, sem marcas nem clientes reais). Listas de
+// tamanhos que não dividem 5: nenhuma linha repete o valor do tick anterior.
+const equipamentos = [
+  'Smartwatch', 'Smartphone 6,1″', 'Tablet 10″', 'Smartphone dobrável', 'Smartphone 6,7″',
+  'Smartphone 6,5″', 'Tablet 8″', 'Smartphone compacto', 'Smartphone 6,8″', 'Fone sem fio',
+  'Smartphone 6,4″',
+]
+const defeitos = [
+  'Não liga', 'Bateria', 'Conector de carga', 'Dobradiça', 'Tela trincada', 'Câmera traseira',
+  'Alto-falante', 'Microfone', 'Botão lateral',
+]
+const clientes = [
+  'Helena C.', 'Diego S.', 'Sônia P.', 'Rogério L.', 'Marina D.', 'Fábio M.', 'Lúcia R.',
+  'Otávio B.', 'Priscila N.', 'Renan T.', 'Vera A.', 'Igor F.', 'Tânia G.',
+]
+const tecnicos = ['Aline', 'Caio', 'Paulo', 'Bianca']
 
 const LINHAS = etapaInicial.length
 
-// Ordens visíveis no tick n. A ordem k vira a OS #(1039 + k); cada tick traz 4 novas.
+// Ordens visíveis no tick n. A ordem k vira a OS #(2314 + k); cada tick traz 5 novas.
 function ordensNoTick(n) {
   return etapaInicial.map((etapa, linha) => {
     const k = LINHAS * n + (LINHAS - 1 - linha)
     return {
-      numero: String(1039 + k),
-      aparelho: aparelhos[k % aparelhos.length],
+      numero: String(2314 + k),
+      equipamento: equipamentos[k % equipamentos.length],
       defeito: defeitos[k % defeitos.length],
       cliente: clientes[k % clientes.length],
+      tecnico: tecnicos[k % tecnicos.length],
       etapa: etapas[(etapa + n) % etapas.length],
     }
   })
 }
 
+const colunas = 'grid-cols-[4rem_minmax(0,1.5fr)_minmax(0,1fr)_4.5rem_7.5rem]'
+
 // Relógio único do painel: conta ticks em laço lento. Desligado com
-// prefers-reduced-motion e com a aba oculta.
+// prefers-reduced-motion (fica no tick 0) e com a aba oculta.
 function useRelogio(intervaloMs) {
   const [tick, setTick] = useState(0)
 
@@ -81,11 +86,11 @@ function useRelogio(intervaloMs) {
 
 // Duas camadas na mesma célula do grid: a que estava escondida recebe o valor novo e
 // aparece enquanto a outra some com o valor antigo. Só opacidade, sem layout shift.
-const camada = 'col-start-1 row-start-1 transition-opacity duration-500'
+const camada = 'col-start-1 row-start-1 min-w-0 truncate transition-opacity duration-500'
 
 function Troca({ a, b, mostrarB, className = '' }) {
   return (
-    <span className={`grid ${className}`}>
+    <span className={`grid min-w-0 ${className}`}>
       <span className={`${camada} ${mostrarB ? 'opacity-0' : 'opacity-100'}`}>{a}</span>
       <span className={`${camada} ${mostrarB ? 'opacity-100' : 'opacity-0'}`}>{b}</span>
     </span>
@@ -101,17 +106,54 @@ function Chip({ etapa }) {
   )
 }
 
-function PainelOrdens() {
-  const tick = useRelogio(3500)
-  // Camada A guarda o último tick par; B, o último ímpar (antes do 1º tick, o próximo).
-  const mostrarB = tick % 2 === 1
-  const ordensA = ordensNoTick(mostrarB ? tick - 1 : tick)
-  const ordensB = ordensNoTick(mostrarB ? tick : Math.max(tick - 1, 1))
+function Icone({ children }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-5"
+    >
+      {children}
+    </svg>
+  )
+}
 
+const menu = [
+  { nome: 'ordens', ativo: true, desenho: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 9h6M9 13h6M9 17h4" /></> },
+  { nome: 'clientes', desenho: <><circle cx="12" cy="8" r="3.5" /><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5" /></> },
+  { nome: 'agenda', desenho: <><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></> },
+  { nome: 'relatorios', desenho: <path d="M5 20V11M12 20V4M19 20v-6" /> },
+]
+
+function BarraLateral() {
+  return (
+    <div className="flex flex-col items-center gap-2 border-r border-border bg-bg py-4">
+      {menu.map((item) => (
+        <span
+          key={item.nome}
+          className={`relative flex size-9 items-center justify-center rounded-button ${
+            item.ativo ? 'border border-border bg-surface text-fg' : 'text-fg-muted'
+          }`}
+        >
+          {item.ativo && <span className="absolute -left-2 h-5 w-0.5 rounded-full bg-accent" />}
+          <Icone>{item.desenho}</Icone>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function PainelOrdens({ ordensA, ordensB, mostrarB }) {
   return (
     <div
       role="img"
-      aria-label="Exemplo do painel Exotek: lista de ordens de serviço com número, aparelho, cliente e status."
+      aria-label="Exemplo do painel Exotek: lista de ordens de serviço com número, equipamento, cliente, técnico e status, e um aviso da última atualização."
       className="overflow-hidden rounded-card border border-border bg-surface"
     >
       <div className="flex items-center gap-3 border-b border-border px-4 py-3">
@@ -125,57 +167,110 @@ function PainelOrdens() {
         </span>
       </div>
 
-      <div className="hidden grid-cols-[4.5rem_1fr_6.5rem_8.5rem] gap-x-3 border-b border-border px-4 py-2 text-xs font-medium text-fg-muted sm:grid">
-        <span>OS</span>
-        <span>Aparelho</span>
-        <span>Cliente</span>
-        <span>Status</span>
-      </div>
+      <div className="grid grid-cols-[3.75rem_minmax(0,1fr)]">
+        <BarraLateral />
 
-      <ul className="divide-y divide-border">
-        {ordensA.map((a, linha) => {
-          const b = ordensB[linha]
-          return (
-            <li
-              key={linha}
-              className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 px-4 py-3 text-sm sm:grid-cols-[4.5rem_1fr_6.5rem_8.5rem] sm:items-center"
-            >
-              <Troca mostrarB={mostrarB} className="font-mono font-semibold" a={`#${a.numero}`} b={`#${b.numero}`} />
-              <span className="col-start-1 sm:col-start-auto">
-                <Troca mostrarB={mostrarB} className="font-medium" a={a.aparelho} b={b.aparelho} />
-                <Troca mostrarB={mostrarB} className="text-fg-muted" a={a.defeito} b={b.defeito} />
-              </span>
-              <Troca
-                mostrarB={mostrarB}
-                className="col-start-1 text-fg-muted sm:col-start-auto"
-                a={a.cliente}
-                b={b.cliente}
-              />
-              <Troca
-                mostrarB={mostrarB}
-                className="col-start-2 row-start-1 justify-items-end sm:col-start-auto sm:row-start-auto sm:justify-items-start"
-                a={<Chip etapa={a.etapa} />}
-                b={<Chip etapa={b.etapa} />}
-              />
-            </li>
-          )
-        })}
-      </ul>
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-4 px-4 pt-4 pb-3">
+            <p className="font-display font-semibold">
+              Ordens de serviço <span className="ml-1 font-sans text-sm font-normal text-fg-muted">23 abertas</span>
+            </p>
+            <span className="w-40 truncate rounded-button border border-border bg-bg px-3 py-1.5 text-xs text-fg-muted">
+              Buscar OS ou cliente
+            </span>
+          </div>
+
+          <div className={`grid ${colunas} gap-x-3 border-y border-border px-4 py-2 text-xs font-medium text-fg-muted`}>
+            <span>OS</span>
+            <span>Equipamento</span>
+            <span>Cliente</span>
+            <span>Técnico</span>
+            <span>Status</span>
+          </div>
+
+          <ul className="divide-y divide-border">
+            {ordensA.map((a, linha) => {
+              const b = ordensB[linha]
+              return (
+                <li key={linha} className={`grid ${colunas} items-center gap-x-3 px-4 py-3 text-sm`}>
+                  <Troca mostrarB={mostrarB} className="font-mono font-semibold" a={`#${a.numero}`} b={`#${b.numero}`} />
+                  <span className="min-w-0">
+                    <Troca mostrarB={mostrarB} className="font-medium" a={a.equipamento} b={b.equipamento} />
+                    <Troca mostrarB={mostrarB} className="text-xs text-fg-muted" a={a.defeito} b={b.defeito} />
+                  </span>
+                  <Troca mostrarB={mostrarB} a={a.cliente} b={b.cliente} />
+                  <Troca mostrarB={mostrarB} className="text-fg-muted" a={a.tecnico} b={b.tecnico} />
+                  <Troca
+                    mostrarB={mostrarB}
+                    className="justify-items-start"
+                    a={<Chip etapa={a.etapa} />}
+                    b={<Chip etapa={b.etapa} />}
+                  />
+                </li>
+              )
+            })}
+          </ul>
+
+          {/* Rodapé à direita: o aviso flutuante cobre o lado esquerdo sem esconder dados. */}
+          <p className="border-t border-border px-4 py-3 text-right text-xs text-fg-muted">
+            Mostrando 5 de 23 · Atualizado agora
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Aviso({ os }) {
+  return (
+    <>
+      <span className="block truncate text-sm font-medium">{os.etapa.aviso}</span>
+      <span className="flex items-center gap-1.5 text-xs text-fg-muted">
+        <span className={`size-2 shrink-0 rounded-full ${os.etapa.ponto}`} />
+        <span className="truncate">
+          OS {os.numero} · {os.cliente} · agora
+        </span>
+      </span>
+    </>
+  )
+}
+
+// Aviso da OS do topo, trocado no mesmo tick da tabela. Largura fixa para não pular
+// entre mensagens. Sem sombra: o anel na cor do fundo destaca o cartão sobre o painel.
+function AvisoFlutuante({ a, b, mostrarB }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute -bottom-8 left-0 flex w-80 max-w-[calc(100vw-2rem)] items-center gap-3 rounded-card border border-border bg-surface px-4 py-3 ring-4 ring-bg sm:left-4 lg:-left-8"
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg text-fg">
+        <Icone>
+          <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+          <path d="M10 20.5a2 2 0 0 0 4 0" />
+        </Icone>
+      </span>
+      <Troca mostrarB={mostrarB} className="flex-1" a={<Aviso os={a} />} b={<Aviso os={b} />} />
     </div>
   )
 }
 
 export default function Hero() {
+  const tick = useRelogio(4000)
+  // Camada A guarda o último tick par; B, o último ímpar (antes do 1º tick, o próximo).
+  const mostrarB = tick % 2 === 1
+  const ordensA = ordensNoTick(mostrarB ? tick - 1 : tick)
+  const ordensB = ordensNoTick(mostrarB ? tick : Math.max(tick - 1, 1))
+
   return (
-    <section id="topo" aria-labelledby="hero-titulo" className="section-y">
-      <div className="container-page grid gap-12 lg:grid-cols-2 lg:items-center">
+    <section id="topo" aria-labelledby="hero-titulo" className="section-y overflow-x-clip">
+      <div className="container-page grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div>
-          <h1 id="hero-titulo" className="max-w-3xl text-4xl font-bold tracking-tight md:text-5xl">
+          <h1 id="hero-titulo" className="text-4xl font-bold tracking-tight md:text-5xl">
             Do balcão à bancada, cada ordem de serviço sob controle.
           </h1>
-          <p className="mt-4 max-w-2xl text-lg text-fg-muted">
-            Registre a entrada do aparelho, aprove o orçamento com o cliente e acompanhe cada
-            reparo em tempo real.
+          <p className="mt-5 max-w-xl text-lg text-fg-muted">
+            Registre a entrada, aprove o orçamento com o cliente e acompanhe o reparo em tempo
+            real.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
             <CtaButton />
@@ -186,10 +281,15 @@ export default function Hero() {
               Ver como funciona
             </a>
           </div>
-          <p className="mt-3 text-sm text-fg-muted">Feito para assistências técnicas de celulares.</p>
         </div>
 
-        <PainelOrdens />
+        {/* No celular o painel mantém a largura de desktop e é recortado pela borda da tela. */}
+        <div className="relative -mr-4 md:-mr-8 lg:mr-0">
+          <div className="min-w-[40rem] lg:min-w-0">
+            <PainelOrdens ordensA={ordensA} ordensB={ordensB} mostrarB={mostrarB} />
+          </div>
+          <AvisoFlutuante a={ordensA[0]} b={ordensB[0]} mostrarB={mostrarB} />
+        </div>
       </div>
     </section>
   )
