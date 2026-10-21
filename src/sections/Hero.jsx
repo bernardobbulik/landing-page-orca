@@ -1,13 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import CtaButton from '../components/CtaButton.jsx'
 
 // Dados ilustrativos do painel (interface de exemplo, não são clientes reais).
-const ordens = [
-  { numero: '1042', aparelho: 'iPhone 13', defeito: 'Troca de tela', cliente: 'Ana P.', status: 'alterna' },
-  { numero: '1041', aparelho: 'Galaxy A54', defeito: 'Bateria', cliente: 'Carlos M.', status: 'reparo' },
-  { numero: '1040', aparelho: 'Moto G84', defeito: 'Conector de carga', cliente: 'Juliana R.', status: 'testes' },
-  { numero: '1039', aparelho: 'Redmi Note 12', defeito: 'Não liga', cliente: 'Rafael S.', status: 'pronto' },
+// O índice no pool vira o número da OS: 0 → #1039, 1 → #1040…
+const pool = [
+  { aparelho: 'Redmi Note 12', defeito: 'Não liga', cliente: 'Rafael S.' },
+  { aparelho: 'Moto G84', defeito: 'Conector de carga', cliente: 'Juliana R.' },
+  { aparelho: 'Galaxy A54', defeito: 'Bateria', cliente: 'Carlos M.' },
+  { aparelho: 'iPhone 13', defeito: 'Troca de tela', cliente: 'Ana P.' },
+  { aparelho: 'Galaxy S23', defeito: 'Tela trincada', cliente: 'Marcos T.' },
+  { aparelho: 'iPhone 11', defeito: 'Face ID', cliente: 'Beatriz L.' },
+  { aparelho: 'Moto E22', defeito: 'Alto-falante', cliente: 'Pedro H.' },
+  { aparelho: 'Redmi 13C', defeito: 'Câmera traseira', cliente: 'Larissa F.' },
 ]
+
+// Status pela linha (de cima para baixo): cada OS avança uma etapa ao descer.
+const statusPorLinha = ['alterna', 'reparo', 'testes', 'pronto']
+
+// Esteira: a cada passo entra uma OS nova no topo e a mais antiga (pronta) sai.
+function ordensNoPasso(passo) {
+  return statusPorLinha.map((status, linha) => {
+    const i = passo + statusPorLinha.length - 1 - linha
+    return { numero: String(1039 + i), ...pool[i % pool.length], status }
+  })
+}
+
+const PX_POR_PASSO = 200 // ≈ 2 cliques da roda do mouse
+const suave = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
 // Cor do status só no ponto; o rótulo é sempre texto em fg.
 const estados = {
@@ -50,6 +69,101 @@ function useAlternancia(intervaloMs) {
   return ativo
 }
 
+// Conta a distância rolada (qualquer direção) enquanto o painel está na tela e avança
+// um passo a cada PX_POR_PASSO. Não rouba a rolagem. Desligado com prefers-reduced-motion.
+function usePassosDeRolagem(alvo) {
+  const [passo, setPasso] = useState(0)
+
+  useEffect(() => {
+    const reduzir = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let visivel = false
+    let ultimoY = window.scrollY
+    let acumulado = 0
+
+    const observador = new IntersectionObserver(([entrada]) => {
+      visivel = entrada.isIntersecting
+    })
+    observador.observe(alvo.current)
+
+    const aoRolar = () => {
+      const y = window.scrollY
+      if (visivel && !reduzir.matches) {
+        acumulado += Math.abs(y - ultimoY)
+        if (acumulado >= PX_POR_PASSO) {
+          acumulado -= PX_POR_PASSO
+          setPasso((p) => p + 1)
+        }
+      }
+      ultimoY = y
+    }
+
+    window.addEventListener('scroll', aoRolar, { passive: true })
+    return () => {
+      observador.disconnect()
+      window.removeEventListener('scroll', aoRolar)
+    }
+  }, [alvo])
+
+  return passo
+}
+
+// FLIP com Web Animations API: linhas que ficam deslizam da posição antiga, a nova
+// entra de cima com fade e o chip que mudou de status aparece suavemente.
+function useEsteira(passo, ordens) {
+  const linhas = useRef(new Map())
+  const anterior = useRef(new Map())
+
+  useLayoutEffect(() => {
+    const atual = new Map()
+    for (const os of ordens) {
+      const el = linhas.current.get(os.numero)
+      if (el) atual.set(os.numero, { topo: el.offsetTop, status: os.status, el })
+    }
+    const antes = anterior.current
+    anterior.current = atual
+    if (passo === 0) return
+
+    atual.forEach(({ topo, status, el }, numero) => {
+      const velho = antes.get(numero)
+      el.getAnimations().forEach((a) => a.cancel())
+
+      if (!velho) {
+        el.animate(
+          [
+            { opacity: 0, transform: 'translateY(-1rem)' },
+            { opacity: 1, transform: 'none' },
+          ],
+          { duration: 600, delay: 120, easing: suave, fill: 'backwards' },
+        )
+        return
+      }
+
+      if (velho.topo !== topo) {
+        el.animate([{ transform: `translateY(${velho.topo - topo}px)` }, { transform: 'none' }], {
+          duration: 650,
+          easing: suave,
+        })
+      }
+
+      const chip = el.querySelector('[data-chip]')
+      if (chip && velho.status !== status) {
+        chip.animate(
+          [
+            { opacity: 0, transform: 'translateY(0.375rem) scale(0.96)' },
+            { opacity: 1, transform: 'none' },
+          ],
+          { duration: 450, delay: 100, easing: suave, fill: 'backwards' },
+        )
+      }
+    })
+  }, [passo, ordens])
+
+  return (numero) => (el) => {
+    if (el) linhas.current.set(numero, el)
+    else linhas.current.delete(numero)
+  }
+}
+
 const chip =
   'whitespace-nowrap rounded-full border border-border bg-bg px-2.5 py-1 text-xs font-medium text-fg'
 
@@ -87,10 +201,15 @@ function StatusChip({ status, aprovado }) {
 }
 
 function PainelOrdens() {
+  const painel = useRef(null)
   const aprovado = useAlternancia(3500)
+  const passo = usePassosDeRolagem(painel)
+  const ordens = useMemo(() => ordensNoPasso(passo), [passo])
+  const refLinha = useEsteira(passo, ordens)
 
   return (
     <div
+      ref={painel}
       role="img"
       aria-label="Exemplo do painel Exotek: lista de ordens de serviço com número, aparelho, cliente e status."
       className="overflow-hidden rounded-card border border-border bg-surface"
@@ -113,10 +232,11 @@ function PainelOrdens() {
         <span>Status</span>
       </div>
 
-      <ul className="divide-y divide-border">
+      <ul className="relative divide-y divide-border overflow-hidden">
         {ordens.map((os) => (
           <li
             key={os.numero}
+            ref={refLinha(os.numero)}
             className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 px-4 py-3 text-sm sm:grid-cols-[4.5rem_1fr_6.5rem_8.5rem] sm:items-center"
           >
             <span className="font-mono font-semibold">#{os.numero}</span>
@@ -125,7 +245,7 @@ function PainelOrdens() {
               <span className="block text-fg-muted">{os.defeito}</span>
             </span>
             <span className="col-start-1 text-fg-muted sm:col-start-auto">{os.cliente}</span>
-            <span className="col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto">
+            <span data-chip className="col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto">
               <StatusChip status={os.status} aprovado={aprovado} />
             </span>
           </li>
