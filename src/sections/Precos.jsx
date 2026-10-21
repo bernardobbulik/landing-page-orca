@@ -37,14 +37,14 @@ function formatarPreco(valor) {
   }).format(valor)
 }
 
-// Botão do plano em destaque: âmbar metálico (pedido do coordenador); os outros
-// ficam no azul padrão. Texto on-accent = #09090B no cartão escuro (9,6:1 sobre o
-// âmbar). O brilho é um pseudo-elemento atrás do texto que atravessa o botão no
-// hover, só com transform.
+// Botão do plano em destaque: off-white sobre o cartão Preto Exotek, o maior contraste
+// da paleta (fg/bg 19:1), e azul Exo no hover (on-accent/accent 5,4:1). Os outros
+// planos ficam no azul padrão. O brilho é um pseudo-elemento claro atrás do texto que
+// atravessa o botão já azul no hover, só com transform.
 const botaoDestaque = [
-  'relative isolate overflow-hidden bg-status-aguardando! text-on-accent!',
+  'relative isolate overflow-hidden bg-fg! text-bg! hover:bg-accent! hover:text-on-accent!',
   'before:absolute before:inset-y-0 before:left-1/4 before:-z-10 before:w-1/3 before:-skew-x-20',
-  'before:bg-linear-to-r before:from-fg/0 before:via-fg/60 before:to-fg/0',
+  'before:bg-linear-to-r before:from-fg/0 before:via-fg/40 before:to-fg/0',
   'before:transition-transform before:duration-500 hover:before:translate-x-[300%]',
 ].join(' ')
 
