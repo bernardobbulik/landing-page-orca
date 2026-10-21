@@ -5,13 +5,14 @@ import { numeros as numerosDuble, depoimentos as depoimentosDuble } from '../../
 
 // Tudo que é real (números, nomes, funções, empresas, depoimentos) vem de
 // content/resultados.json. Campo vazio ou com [PREENCHER] = pendente.
-// Em desenvolvimento, lista com pendência é trocada pelos dublês de
-// content/resultados.dubles.json (dados fictícios, marcados "Dublê" na tela).
-// No build de produção os dublês nem entram no bundle: só itens reais completos
-// aparecem, e a seção some se nada estiver pronto.
+// Só itens reais completos aparecem, e a seção some se nada estiver pronto. Número
+// só entra com fonte: indicador sem origem verificável tira mais confiança do que dá.
+// Para ver o layout com os dublês de content/resultados.dubles.json (dados fictícios,
+// marcados "Dublê" na tela), abra o dev com ?dubles na URL. Sem o parâmetro, o dev
+// mostra o mesmo que a produção. No build os dublês nem entram no bundle.
 
 const MARCADOR = '[PREENCHER]'
-const DEV = import.meta.env.DEV
+const DEV = import.meta.env.DEV && new URLSearchParams(window.location.search).has('dubles')
 const INTERVALO_MS = 6000
 
 const vazio = (valor) => typeof valor !== 'string' || valor.trim() === '' || valor.includes(MARCADOR)
@@ -23,8 +24,8 @@ function completo(item, obrigatorios, opcionais = []) {
   )
 }
 
-const numeroCompleto = (numero) => completo(numero, ['valor', 'rotulo'], ['fonte'])
-const depoimentoCompleto = (depoimento) => completo(depoimento, ['citacao', 'nome', 'funcao', 'empresa'])
+const numeroCompleto = (numero) => completo(numero, ['valor', 'rotulo', 'fonte'])
+const depoimentoCompleto = (depoimento) => completo(depoimento, ['citacao', 'nome', 'funcao', 'empresa'], ['cidade'])
 
 function escolher(reais = [], doDuble, estaCompleto) {
   const pendentes = reais.filter((item) => !estaCompleto(item)).length
@@ -74,7 +75,7 @@ function SeloDuble() {
   )
 }
 
-function CartaoDepoimento({ citacao, nome, funcao, empresa, duble }) {
+function CartaoDepoimento({ citacao, nome, funcao, empresa, cidade, duble }) {
   return (
     <figure
       className={`flex h-full flex-col rounded-card border bg-surface p-6 md:p-10 ${
@@ -92,6 +93,7 @@ function CartaoDepoimento({ citacao, nome, funcao, empresa, duble }) {
         <span className="block font-semibold">{nome}</span>
         <span className="block text-sm text-fg-muted">
           {funcao} · {empresa}
+          {cidade && ` · ${cidade}`}
         </span>
       </figcaption>
     </figure>
@@ -308,13 +310,15 @@ export default function Resultados() {
     <section id="resultados" aria-labelledby="resultados-titulo" className="section-y">
       <div className="container-page">
         <h2 id="resultados-titulo" className="text-3xl font-bold tracking-tight md:text-4xl">
-          O que muda na rotina da assistência.
+          Quem já usa a Exotek.
         </h2>
-        <p className="mt-4 max-w-2xl text-lg text-fg-muted">Menos confusão. Mais aparelhos entregues.</p>
+        <p className="mt-4 max-w-2xl text-lg text-fg-muted">
+          Assistências que organizaram o balcão e a bancada com a Exotek.
+        </p>
 
         {DEV && (numeros.duble || depoimentos.duble) && (
           <p role="note" className="mt-8 rounded-card border border-dashed border-accent bg-surface p-4 text-sm">
-            <strong className="font-semibold">Dublês (visível só em desenvolvimento).</strong>{' '}
+            <strong className="font-semibold">Dublês (só em desenvolvimento, com ?dubles na URL).</strong>{' '}
             <span className="text-fg-muted">
               <code className="font-mono text-fg">content/resultados.json</code> ainda tem{' '}
               {numeros.pendentes} número(s) e {depoimentos.pendentes} depoimento(s) pendentes, então esta seção

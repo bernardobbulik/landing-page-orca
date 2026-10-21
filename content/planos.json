@@ -1,87 +1,110 @@
 {
   "planos": [
     {
-      "id": "plano-1",
-      "nome": "[PREENCHER: plano 1]",
-      "precoMensal": "[PREENCHER]",
-      "usuarios": "[PREENCHER]",
-      "ordensDeServico": "[PREENCHER]",
+      "id": "essencial",
+      "nome": "Essencial",
+      "chamada": "Para começar com organização",
+      "descricao": "Para quem trabalha sozinho ou com uma equipe pequena e precisa organizar os atendimentos do início ao fim.",
+      "precoMensal": 49.9,
+      "usuarios": "Até 2",
+      "armazenamento": "2 GB",
       "destaque": false,
+      "base": null,
       "itens": [
-        "Checklist de entrada com fotos",
-        "Kanban da bancada por técnico",
-        "Link de acompanhamento para o cliente",
-        "Histórico e garantia por aparelho",
-        "Suporte: [PREENCHER]"
+        "Ordens de serviço ilimitadas",
+        "Cadastro de clientes e aparelhos",
+        "Fotos e checklist de recebimento",
+        "Etiquetas com QR Code",
+        "Diagnóstico, orçamento e aprovação",
+        "Histórico completo até a entrega"
       ]
     },
     {
-      "id": "plano-2",
-      "nome": "[PREENCHER: plano 2]",
-      "precoMensal": "[PREENCHER]",
-      "usuarios": "[PREENCHER]",
-      "ordensDeServico": "[PREENCHER]",
+      "id": "profissional",
+      "nome": "Profissional",
+      "chamada": "Para equipes em crescimento",
+      "descricao": "Para assistências com equipe no balcão e técnicos trabalhando na bancada.",
+      "precoMensal": 99.9,
+      "usuarios": "Até 6",
+      "armazenamento": "10 GB",
       "destaque": true,
+      "base": "Tudo do Essencial, mais:",
       "itens": [
-        "Tudo do plano anterior",
-        "Aviso automático ao cliente",
-        "Peças e estoque",
-        "Treinamento da equipe: [PREENCHER]",
-        "Suporte: [PREENCHER]"
+        "Até 6 usuários, cada um com o próprio login",
+        "10 GB para fotos e anexos",
+        "Mais capacidade para sua equipe"
       ]
     },
     {
-      "id": "plano-3",
-      "nome": "[PREENCHER: plano 3]",
-      "precoMensal": "[PREENCHER]",
-      "usuarios": "[PREENCHER]",
-      "ordensDeServico": "[PREENCHER]",
+      "id": "avancado",
+      "nome": "Avançado",
+      "chamada": "Para operações maiores",
+      "descricao": "Para assistências com equipes maiores, que precisam de mais controle sobre a operação.",
+      "precoMensal": 179.9,
+      "usuarios": "Até 15",
+      "armazenamento": "30 GB",
       "destaque": false,
+      "base": "Tudo do Profissional, mais:",
       "itens": [
-        "Tudo do plano anterior",
-        "[PREENCHER: recurso exclusivo]",
-        "[PREENCHER: recurso exclusivo]",
-        "Treinamento da equipe: [PREENCHER]",
-        "Suporte: [PREENCHER]"
+        "Até 15 usuários, cada um com o próprio login",
+        "30 GB para fotos e anexos",
+        "Suporte prioritário"
       ]
     }
   ],
   "comparacao": [
     {
-      "recurso": "Checklist de entrada com fotos",
-      "valores": { "plano-1": true, "plano-2": true, "plano-3": true }
+      "grupo": "Limites e equipe",
+      "linhas": [
+        { "recurso": "Usuários incluídos", "valores": { "essencial": "2", "profissional": "6", "avancado": "15" } },
+        { "recurso": "Unidades da empresa", "valores": { "essencial": "1", "profissional": "1", "avancado": "1" } },
+        {
+          "recurso": "Ordens de serviço",
+          "valores": { "essencial": "Ilimitadas", "profissional": "Ilimitadas", "avancado": "Ilimitadas" }
+        },
+        {
+          "recurso": "Armazenamento de fotos e anexos",
+          "valores": { "essencial": "2 GB", "profissional": "10 GB", "avancado": "30 GB" }
+        }
+      ]
     },
     {
-      "recurso": "Kanban da bancada por técnico",
-      "valores": { "plano-1": true, "plano-2": true, "plano-3": true }
+      "grupo": "Ordens de serviço",
+      "linhas": [
+        { "recurso": "Cadastro de clientes e aparelhos", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Abertura e gerenciamento de OS", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Fotos e checklist de entrada", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Histórico completo da OS", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Quadro de acompanhamento (Kanban)", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Etiquetas com QR Code", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Impressão térmica de etiquetas", "valores": { "essencial": true, "profissional": true, "avancado": true } }
+      ]
     },
     {
-      "recurso": "Link de acompanhamento para o cliente",
-      "valores": { "plano-1": true, "plano-2": true, "plano-3": true }
+      "grupo": "Bancada e reparo",
+      "linhas": [
+        { "recurso": "Registro de diagnóstico", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Orçamento com peças e serviços", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Aprovação do orçamento por link", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Registro de reparos executados", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Checklist de testes", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Registro de entrega", "valores": { "essencial": true, "profissional": true, "avancado": true } }
+      ]
     },
     {
-      "recurso": "Histórico e garantia por aparelho",
-      "valores": { "plano-1": true, "plano-2": true, "plano-3": true }
+      "grupo": "Gestão e controle",
+      "linhas": [
+        { "recurso": "Login individual por funcionário", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Perfis de acesso predefinidos", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Painel de ordens e status", "valores": { "essencial": true, "profissional": true, "avancado": true } }
+      ]
     },
     {
-      "recurso": "Aviso automático ao cliente",
-      "valores": { "plano-1": false, "plano-2": true, "plano-3": true }
-    },
-    {
-      "recurso": "Peças e estoque",
-      "valores": { "plano-1": false, "plano-2": true, "plano-3": true }
-    },
-    {
-      "recurso": "[PREENCHER: recursos exclusivos]",
-      "valores": { "plano-1": false, "plano-2": false, "plano-3": true }
-    },
-    {
-      "recurso": "Treinamento da equipe",
-      "valores": { "plano-1": "[PREENCHER]", "plano-2": "[PREENCHER]", "plano-3": "[PREENCHER]" }
-    },
-    {
-      "recurso": "Suporte",
-      "valores": { "plano-1": "[PREENCHER]", "plano-2": "[PREENCHER]", "plano-3": "[PREENCHER]" }
+      "grupo": "Atendimento",
+      "linhas": [
+        { "recurso": "Suporte padrão", "valores": { "essencial": true, "profissional": true, "avancado": true } },
+        { "recurso": "Suporte prioritário", "valores": { "essencial": false, "profissional": false, "avancado": true } }
+      ]
     }
   ]
 }

@@ -1,77 +1,53 @@
-const iconeProps = {
-  width: 24,
-  height: 24,
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 1.5,
-  strokeLinecap: 'round',
-  strokeLinejoin: 'round',
-  'aria-hidden': true,
-  focusable: false,
-  className: 'size-6 text-fg-muted',
-}
-
-const DORES = [
+// Situações do dia a dia do balcão: a fala que todo dono de assistência já ouviu
+// e o que acontece hoje, sem um fluxo registrado.
+const SITUACOES = [
   {
-    titulo: 'O papel se perde.',
-    texto:
-      'Ficha no caderno, recibo na gaveta. Quando o cliente volta, ninguém acha o que foi combinado.',
-    icone: (
-      <svg {...iconeProps}>
-        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-        <path d="M14 3v5h5M9 13h6M9 17h4" />
-      </svg>
-    ),
+    fala: 'Já ficou pronto?',
+    texto: 'O telefone toca, alguém larga a bancada e vai conferir na prateleira. O reparo para enquanto isso.',
   },
   {
-    titulo: 'O cliente liga para saber do aparelho.',
-    texto: 'O telefone toca e alguém larga a bancada para ir conferir na prateleira.',
-    icone: (
-      <svg {...iconeProps}>
-        <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />
-      </svg>
-    ),
+    fala: 'Esse risco não estava aí.',
+    texto: 'Sem foto na entrada, é a palavra do cliente contra a do balcão. E quem perde é a loja.',
   },
   {
-    titulo: 'Peça parada, sem responsável.',
-    texto: 'O aparelho espera peça ou aprovação e ninguém sabe quem tem que cobrar.',
-    icone: (
-      <svg {...iconeProps}>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
-      </svg>
-    ),
+    fala: 'Com quem está esse aparelho?',
+    texto: 'A peça chegou e o orçamento foi aprovado, mas a OS ficou parada porque ninguém era o responsável.',
   },
 ]
 
 export default function Problema() {
   return (
     <section id="problema" aria-labelledby="problema-titulo" className="section-y">
-      <div className="container-page">
-        <h2 id="problema-titulo" className="text-3xl font-bold tracking-tight md:text-4xl">
-          O equipamento entra, e depois ninguém sabe onde está.
-        </h2>
-        <p className="mt-4 max-w-2xl text-lg text-fg-muted">
-          Sem um fluxo registrado, a assistência funciona na memória de quem está no balcão.
-        </p>
-        <ul className="mt-10 grid gap-4 md:grid-cols-3 md:gap-6">
-          {DORES.map(({ titulo, texto, icone }) => (
+      <div className="container-page grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[auto_1fr] lg:gap-x-16 lg:gap-y-6">
+        <div>
+          <h2 id="problema-titulo" className="text-3xl font-bold tracking-tight md:text-4xl">
+            O aparelho entra. Depois, ninguém sabe onde está.
+          </h2>
+          <p className="mt-4 max-w-xl text-lg text-fg-muted">
+            Sem um fluxo registrado, a assistência funciona na memória de quem está no balcão. Você já
+            ouviu estas três frases esta semana.
+          </p>
+        </div>
+
+        <ol className="border-t border-border lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          {SITUACOES.map(({ fala, texto }, i) => (
             <li
-              key={titulo}
-              className="group relative cursor-pointer rounded-card border border-border bg-surface p-6 transition-transform duration-200 ease-out hover:-translate-y-1"
+              key={fala}
+              className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-4 border-b border-border py-6 md:grid-cols-[3.5rem_minmax(0,1fr)] md:py-8"
             >
-              {/* Borda azul do hover: aparece por opacidade (animação só em transform/opacity). */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -inset-px rounded-card border-2 border-accent opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100"
-              />
-              {icone}
-              <h3 className="mt-4 text-lg font-semibold">{titulo}</h3>
-              <p className="mt-2 text-fg-muted">{texto}</p>
+              <span aria-hidden="true" className="font-display text-sm font-semibold text-fg-muted md:text-base">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <div>
+                <h3 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">“{fala}”</h3>
+                <p className="mt-2 max-w-xl text-fg-muted">{texto}</p>
+              </div>
             </li>
           ))}
-        </ul>
+        </ol>
+
+        {/* Depois da lista no celular; no desktop, sob o título (mesma ordem de leitura). */}
+        <p className="text-lg font-semibold lg:col-start-1 lg:row-start-2">Com a Exotek, a resposta está na OS.</p>
       </div>
     </section>
   )

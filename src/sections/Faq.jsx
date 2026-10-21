@@ -1,8 +1,24 @@
 import { useState } from 'react'
 
-// Respostas dependem de informação comercial/técnica que ainda não temos:
-// tudo o que é fato sobre o produto fica como [PREENCHER].
-const perguntas = [
+// Respostas dependem de informação comercial/técnica: o que ainda não foi definido
+// fica como [PREENCHER]. Pergunta com resposta pendente aparece em dev (para lembrar
+// de preencher) e fica fora do build de produção, que nunca mostra [PREENCHER].
+// Sem o "]": as respostas usam "[PREENCHER: o que falta]".
+const MARCADOR = '[PREENCHER'
+
+const todasAsPerguntas = [
+  {
+    id: 'limite-os',
+    pergunta: 'Tem limite de ordens de serviço?',
+    resposta:
+      'Não. Todos os planos têm ordens de serviço ilimitadas. O que muda entre eles é o número de usuários e o espaço para fotos e anexos.',
+  },
+  {
+    id: 'fluxo-completo',
+    pergunta: 'Preciso do plano mais caro para ter o fluxo completo?',
+    resposta:
+      'Não. Desde o Essencial você recebe o aparelho, registra o diagnóstico, gera o orçamento, acompanha o reparo e registra a entrega. Os planos maiores servem para equipes maiores.',
+  },
   {
     id: 'migracao',
     pergunta: 'Dá para trazer os dados da planilha ou do sistema que uso hoje?',
@@ -39,6 +55,10 @@ const perguntas = [
       '[PREENCHER: fidelidade, multa, aviso prévio e como exportar os dados ao cancelar.]',
   },
 ]
+
+const perguntas = import.meta.env.DEV
+  ? todasAsPerguntas
+  : todasAsPerguntas.filter(({ resposta }) => !resposta.includes(MARCADOR))
 
 function ItemFaq({ id, pergunta, resposta }) {
   const [aberto, setAberto] = useState(false)

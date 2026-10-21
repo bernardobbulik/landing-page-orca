@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
 import CtaButton from '../components/CtaButton.jsx'
+import { planos } from '../../content/planos.json'
+
+// "A partir de": o menor preço mensal de content/planos.json.
+const precoInicial = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+  Math.min(...planos.map((p) => p.precoMensal)),
+)
+const garantias = ['Ordens de serviço ilimitadas', 'Fluxo completo em todos os planos', `A partir de ${precoInicial}/mês`]
 
 // Etapas da OS, na ordem, com o aviso que cada uma gera. Cor do status só no ponto;
 // o rótulo é sempre texto em fg.
@@ -265,12 +272,13 @@ export default function Hero() {
     <section id="topo" aria-labelledby="hero-titulo" className="section-y overflow-x-clip">
       <div className="container-page grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div>
-          <h1 id="hero-titulo" className="text-4xl font-bold tracking-tight md:text-5xl">
-            Do balcão à bancada, cada ordem de serviço sob controle.
+          <p className="text-sm font-semibold text-accent">Gestão para assistências técnicas de celulares</p>
+          <h1 id="hero-titulo" className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
+            Sua assistência organizada, do primeiro atendimento até a entrega.
           </h1>
           <p className="mt-5 max-w-xl text-lg text-fg-muted">
-            Registre a entrada, aprove o orçamento com o cliente e acompanhe o reparo em tempo
-            real.
+            Chega de procurar ordens de serviço, perguntar ao técnico sobre um aparelho ou perder
+            informações no balcão. Com a Exotek, você acompanha cada etapa em um só lugar.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
             <CtaButton />
@@ -278,9 +286,28 @@ export default function Hero() {
               href="#jornada"
               className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4"
             >
-              Ver como funciona
+              Conhecer o sistema
             </a>
           </div>
+          <ul role="list" className="mt-8 space-y-2 text-sm text-fg-muted">
+            {garantias.map((texto) => (
+              <li key={texto} className="flex items-center gap-2">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-accent"
+                >
+                  <path d="m5 12 5 5 9-10" />
+                </svg>
+                {texto}
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* No celular o painel mantém a largura de desktop e é recortado pela borda da tela. */}
