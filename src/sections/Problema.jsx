@@ -57,7 +57,15 @@ export default function Problema() {
         </p>
         <ul className="mt-10 grid gap-4 md:grid-cols-3 md:gap-6">
           {DORES.map(({ titulo, texto, icone }) => (
-            <li key={titulo} className="rounded-card border border-border bg-surface p-6">
+            <li
+              key={titulo}
+              className="group relative rounded-card border border-border bg-surface p-6 transition-transform duration-200 ease-out hover:-translate-y-1"
+            >
+              {/* Borda azul do hover: aparece por opacidade (animação só em transform/opacity). */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-px rounded-card border-2 border-accent opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100"
+              />
               {icone}
               <h3 className="mt-4 text-lg font-semibold">{titulo}</h3>
               <p className="mt-2 text-fg-muted">{texto}</p>
