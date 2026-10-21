@@ -213,14 +213,16 @@ function BotaoPlanos() {
     <a
       href="#precos"
       data-nav="proxima"
-      className="group relative inline-flex min-h-11 items-center gap-2 overflow-hidden rounded-button border border-status-aguardando bg-status-aguardando px-4 text-sm font-semibold text-fg transition-transform duration-200 ease-out hover:-translate-y-0.5"
+      className="group relative inline-flex min-h-11 items-center gap-2 overflow-hidden rounded-button border border-status-aguardando bg-status-aguardando px-4 text-sm font-medium text-fg transition-transform duration-200 ease-out hover:-translate-y-0.5"
     >
       <span
         ref={brilho}
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -translate-x-[120%] -skew-x-20 bg-linear-to-r from-transparent via-surface/70 to-transparent"
       />
-      <span className="relative">Agora é com você.</span>
+      <span className="relative">
+        Agora é com <strong className="font-bold">você</strong>.
+      </span>
       <Seta className="relative transition-transform duration-200 group-hover:translate-x-1" />
     </a>
   )
