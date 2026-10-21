@@ -59,7 +59,7 @@ export default function Problema() {
           {DORES.map(({ titulo, texto, icone }) => (
             <li
               key={titulo}
-              className="group relative rounded-card border border-border bg-surface p-6 transition-transform duration-200 ease-out hover:-translate-y-1"
+              className="group relative cursor-pointer rounded-card border border-border bg-surface p-6 transition-transform duration-200 ease-out hover:-translate-y-1"
             >
               {/* Borda azul do hover: aparece por opacidade (animação só em transform/opacity). */}
               <span
