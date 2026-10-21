@@ -2,25 +2,54 @@ import { useEffect, useState } from 'react'
 import CtaButton from '../components/CtaButton.jsx'
 
 // Dados ilustrativos do painel (interface de exemplo, não são clientes reais).
-const ordens = [
-  { numero: '1042', aparelho: 'iPhone 13', defeito: 'Troca de tela', cliente: 'Ana P.', status: 'alterna' },
-  { numero: '1041', aparelho: 'Galaxy A54', defeito: 'Bateria', cliente: 'Carlos M.', status: 'reparo' },
-  { numero: '1040', aparelho: 'Moto G84', defeito: 'Conector de carga', cliente: 'Juliana R.', status: 'testes' },
-  { numero: '1039', aparelho: 'Redmi Note 12', defeito: 'Não liga', cliente: 'Rafael S.', status: 'pronto' },
+// Listas com tamanhos primos entre si (11, 9, 13): nenhuma linha repete o valor do
+// tick anterior e a mesma combinação só volta depois de centenas de ordens.
+const aparelhos = [
+  'Redmi Note 12', 'Moto G84', 'Galaxy A54', 'iPhone 13', 'Galaxy S23', 'iPhone 11',
+  'Moto E22', 'Redmi 13C', 'iPhone 14 Pro', 'Galaxy A15', 'Poco X6',
+]
+const defeitos = [
+  'Não liga', 'Conector de carga', 'Bateria', 'Troca de tela', 'Face ID', 'Alto-falante',
+  'Câmera traseira', 'Tela trincada', 'Microfone',
+]
+const clientes = [
+  'Rafael S.', 'Juliana R.', 'Carlos M.', 'Ana P.', 'Marcos T.', 'Beatriz L.', 'Pedro H.',
+  'Larissa F.', 'Thiago A.', 'Camila N.', 'Bruno C.', 'Fernanda O.', 'Lucas V.',
 ]
 
-// Cor do status só no ponto; o rótulo é sempre texto em fg.
-const estados = {
-  orcamento: { rotulo: 'Em orçamento', ponto: 'bg-status-aguardando' },
-  aprovado: { rotulo: 'Aprovado', ponto: 'bg-status-aprovado' },
-  reparo: { rotulo: 'Em reparo', ponto: 'bg-status-reparo' },
-  testes: { rotulo: 'Testes', ponto: 'bg-status-testes' },
-  pronto: { rotulo: 'Pronto', ponto: 'bg-status-pronto' },
+// Etapas da OS, na ordem. Cor do status só no ponto; o rótulo é sempre texto em fg.
+const etapas = [
+  { rotulo: 'Recebido', ponto: 'bg-status-recebido' },
+  { rotulo: 'Diagnóstico', ponto: 'bg-status-diagnostico' },
+  { rotulo: 'Em orçamento', ponto: 'bg-status-aguardando' },
+  { rotulo: 'Aprovado', ponto: 'bg-status-aprovado' },
+  { rotulo: 'Em reparo', ponto: 'bg-status-reparo' },
+  { rotulo: 'Testes', ponto: 'bg-status-testes' },
+  { rotulo: 'Pronto', ponto: 'bg-status-pronto' },
+]
+// Etapa inicial de cada linha (de cima para baixo); a cada tick todas avançam uma.
+const etapaInicial = [2, 4, 5, 6]
+
+const LINHAS = etapaInicial.length
+
+// Ordens visíveis no tick n. A ordem k vira a OS #(1039 + k); cada tick traz 4 novas.
+function ordensNoTick(n) {
+  return etapaInicial.map((etapa, linha) => {
+    const k = LINHAS * n + (LINHAS - 1 - linha)
+    return {
+      numero: String(1039 + k),
+      aparelho: aparelhos[k % aparelhos.length],
+      defeito: defeitos[k % defeitos.length],
+      cliente: clientes[k % clientes.length],
+      etapa: etapas[(etapa + n) % etapas.length],
+    }
+  })
 }
 
-// Alterna true/false em laço lento. Desligado com prefers-reduced-motion e com a aba oculta.
-function useAlternancia(intervaloMs) {
-  const [ativo, setAtivo] = useState(false)
+// Relógio único do painel: conta ticks em laço lento. Desligado com
+// prefers-reduced-motion e com a aba oculta.
+function useRelogio(intervaloMs) {
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     const reduzir = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -29,11 +58,11 @@ function useAlternancia(intervaloMs) {
     const sincronizar = () => {
       clearInterval(timer)
       if (!reduzir.matches && !document.hidden) {
-        timer = setInterval(() => setAtivo((v) => !v), intervaloMs)
+        timer = setInterval(() => setTick((t) => t + 1), intervaloMs)
       }
     }
     const aoMudarMovimento = () => {
-      if (reduzir.matches) setAtivo(false)
+      if (reduzir.matches) setTick(0)
       sincronizar()
     }
 
@@ -47,47 +76,37 @@ function useAlternancia(intervaloMs) {
     }
   }, [intervaloMs])
 
-  return ativo
+  return tick
 }
 
-const chip =
-  'whitespace-nowrap rounded-full border border-border bg-bg px-2.5 py-1 text-xs font-medium text-fg'
+// Duas camadas na mesma célula do grid: a que estava escondida recebe o valor novo e
+// aparece enquanto a outra some com o valor antigo. Só opacidade, sem layout shift.
+const camada = 'col-start-1 row-start-1 transition-opacity duration-500'
 
-function Rotulo({ estado }) {
-  const { rotulo, ponto } = estados[estado]
+function Troca({ a, b, mostrarB, className = '' }) {
   return (
-    <>
-      <span className={`size-2 shrink-0 rounded-full ${ponto}`} />
-      {rotulo}
-    </>
+    <span className={`grid ${className}`}>
+      <span className={`${camada} ${mostrarB ? 'opacity-0' : 'opacity-100'}`}>{a}</span>
+      <span className={`${camada} ${mostrarB ? 'opacity-100' : 'opacity-0'}`}>{b}</span>
+    </span>
   )
 }
 
-function StatusChip({ status, aprovado }) {
-  if (status !== 'alterna') {
-    return (
-      <span className={`${chip} inline-flex items-center gap-1.5`}>
-        <Rotulo estado={status} />
-      </span>
-    )
-  }
-
-  // Os dois estados ocupam a mesma célula: a largura não muda, só a opacidade.
-  const camada = 'col-start-1 row-start-1 inline-flex items-center gap-1.5 transition-opacity duration-500'
+function Chip({ etapa }) {
   return (
-    <span className={`${chip} inline-grid`}>
-      <span className={`${camada} ${aprovado ? 'opacity-0' : 'opacity-100'}`}>
-        <Rotulo estado="orcamento" />
-      </span>
-      <span className={`${camada} ${aprovado ? 'opacity-100' : 'opacity-0'}`}>
-        <Rotulo estado="aprovado" />
-      </span>
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-bg px-2.5 py-1 text-xs font-medium text-fg">
+      <span className={`size-2 shrink-0 rounded-full ${etapa.ponto}`} />
+      {etapa.rotulo}
     </span>
   )
 }
 
 function PainelOrdens() {
-  const aprovado = useAlternancia(3500)
+  const tick = useRelogio(3500)
+  // Camada A guarda o último tick par; B, o último ímpar (antes do 1º tick, o próximo).
+  const mostrarB = tick % 2 === 1
+  const ordensA = ordensNoTick(mostrarB ? tick - 1 : tick)
+  const ordensB = ordensNoTick(mostrarB ? tick : Math.max(tick - 1, 1))
 
   return (
     <div
@@ -114,22 +133,33 @@ function PainelOrdens() {
       </div>
 
       <ul className="divide-y divide-border">
-        {ordens.map((os) => (
-          <li
-            key={os.numero}
-            className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 px-4 py-3 text-sm sm:grid-cols-[4.5rem_1fr_6.5rem_8.5rem] sm:items-center"
-          >
-            <span className="font-mono font-semibold">#{os.numero}</span>
-            <span className="col-start-1 sm:col-start-auto">
-              <span className="font-medium">{os.aparelho}</span>
-              <span className="block text-fg-muted">{os.defeito}</span>
-            </span>
-            <span className="col-start-1 text-fg-muted sm:col-start-auto">{os.cliente}</span>
-            <span className="col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto">
-              <StatusChip status={os.status} aprovado={aprovado} />
-            </span>
-          </li>
-        ))}
+        {ordensA.map((a, linha) => {
+          const b = ordensB[linha]
+          return (
+            <li
+              key={linha}
+              className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 px-4 py-3 text-sm sm:grid-cols-[4.5rem_1fr_6.5rem_8.5rem] sm:items-center"
+            >
+              <Troca mostrarB={mostrarB} className="font-mono font-semibold" a={`#${a.numero}`} b={`#${b.numero}`} />
+              <span className="col-start-1 sm:col-start-auto">
+                <Troca mostrarB={mostrarB} className="font-medium" a={a.aparelho} b={b.aparelho} />
+                <Troca mostrarB={mostrarB} className="text-fg-muted" a={a.defeito} b={b.defeito} />
+              </span>
+              <Troca
+                mostrarB={mostrarB}
+                className="col-start-1 text-fg-muted sm:col-start-auto"
+                a={a.cliente}
+                b={b.cliente}
+              />
+              <Troca
+                mostrarB={mostrarB}
+                className="col-start-2 row-start-1 justify-items-end sm:col-start-auto sm:row-start-auto sm:justify-items-start"
+                a={<Chip etapa={a.etapa} />}
+                b={<Chip etapa={b.etapa} />}
+              />
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
