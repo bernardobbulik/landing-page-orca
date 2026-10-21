@@ -1,9 +1,9 @@
 {
   "_instrucoes": [
     "Só dados reais, com autorização do cliente citado. Troque cada [PREENCHER].",
-    "Item com campo vazio ou com [PREENCHER] é rascunho: aparece marcado em desenvolvimento (npm run dev) e NÃO aparece no build de produção. Se nada estiver preenchido, a seção inteira some em produção.",
+    "Item com campo vazio ou com [PREENCHER] está pendente. Em desenvolvimento (npm run dev), enquanto houver pendência a lista mostra os dublês de content/resultados.dubles.json. No build de produção os dublês nunca aparecem: só itens completos são exibidos, e a seção some se nada estiver preenchido.",
     "numeros.valor: o número já formatado, com unidade (%, min, dias...). numeros.rotulo: o que foi medido. numeros.fonte: opcional, base da medição (quem, período); use \"\" para não exibir.",
-    "depoimentos.citacao: o texto do cliente, sem aspas. depoimentos.foto: nome do arquivo em src/assets/resultados/ (WebP, quadrada, mínimo 112x112 px). Se existir um .avif com o mesmo nome, ele é usado automaticamente."
+    "depoimentos.citacao: o texto do cliente, sem aspas. Com 2 ou mais depoimentos completos, eles viram carrossel."
   ],
   "numeros": [
     { "valor": "[PREENCHER]", "rotulo": "[PREENCHER]", "fonte": "[PREENCHER]" },
@@ -15,15 +15,13 @@
       "citacao": "[PREENCHER]",
       "nome": "[PREENCHER]",
       "funcao": "[PREENCHER]",
-      "empresa": "[PREENCHER]",
-      "foto": "[PREENCHER]"
+      "empresa": "[PREENCHER]"
     },
     {
       "citacao": "[PREENCHER]",
       "nome": "[PREENCHER]",
       "funcao": "[PREENCHER]",
-      "empresa": "[PREENCHER]",
-      "foto": "[PREENCHER]"
+      "empresa": "[PREENCHER]"
     }
   ]
 }

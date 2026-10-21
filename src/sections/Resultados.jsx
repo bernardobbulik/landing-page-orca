@@ -1,95 +1,309 @@
-import dados from '../../content/resultados.json'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+// Imports nomeados: o build leva só as chaves usadas (as instruções do JSON ficam de fora).
+import { numeros as numerosReais, depoimentos as depoimentosReais } from '../../content/resultados.json'
+import { numeros as numerosDuble, depoimentos as depoimentosDuble } from '../../content/resultados.dubles.json'
 
-// Tudo que é real (números, nomes, depoimentos, fotos) vem de content/resultados.json.
-// Campo vazio ou com [PREENCHER] = rascunho: aparece marcado só em desenvolvimento.
-// No build de produção o item não é exibido, e a seção some se nada estiver pronto.
+// Tudo que é real (números, nomes, funções, empresas, depoimentos) vem de
+// content/resultados.json. Campo vazio ou com [PREENCHER] = pendente.
+// Em desenvolvimento, lista com pendência é trocada pelos dublês de
+// content/resultados.dubles.json (dados fictícios, marcados "Dublê" na tela).
+// No build de produção os dublês nem entram no bundle: só itens reais completos
+// aparecem, e a seção some se nada estiver pronto.
 
 const MARCADOR = '[PREENCHER]'
 const DEV = import.meta.env.DEV
-
-// O JSON guarda só o nome do arquivo; as fotos ficam em src/assets/resultados/.
-const fotos = import.meta.glob('../assets/resultados/*.{webp,avif}', { eager: true, import: 'default' })
-const urlFoto = (arquivo) => fotos[`../assets/resultados/${arquivo}`]
+const INTERVALO_MS = 6000
 
 const vazio = (valor) => typeof valor !== 'string' || valor.trim() === '' || valor.includes(MARCADOR)
 
-function pendencias(item, obrigatorios, opcionais = []) {
-  return [
-    ...obrigatorios.filter((campo) => vazio(item[campo])),
-    ...opcionais.filter((campo) => typeof item[campo] === 'string' && item[campo].includes(MARCADOR)),
-  ]
+function completo(item, obrigatorios, opcionais = []) {
+  return (
+    obrigatorios.every((campo) => !vazio(item[campo])) &&
+    opcionais.every((campo) => !(typeof item[campo] === 'string' && item[campo].includes(MARCADOR)))
+  )
 }
 
-const numeros = (dados.numeros ?? []).map((numero) => ({
-  ...numero,
-  pendentes: pendencias(numero, ['valor', 'rotulo'], ['fonte']),
-}))
+const numeroCompleto = (numero) => completo(numero, ['valor', 'rotulo'], ['fonte'])
+const depoimentoCompleto = (depoimento) => completo(depoimento, ['citacao', 'nome', 'funcao', 'empresa'])
 
-const depoimentos = (dados.depoimentos ?? []).map((depoimento) => ({
-  ...depoimento,
-  pendentes: [
-    ...pendencias(depoimento, ['citacao', 'nome', 'funcao', 'empresa']),
-    ...(vazio(depoimento.foto) || !urlFoto(depoimento.foto) ? ['foto'] : []),
-  ],
-}))
+function escolher(reais = [], doDuble, estaCompleto) {
+  const pendentes = reais.filter((item) => !estaCompleto(item)).length
+  if (DEV && pendentes > 0) return { itens: doDuble, duble: true, pendentes }
+  return { itens: reais.filter(estaCompleto), duble: false, pendentes }
+}
 
-const exibir = (lista) => (DEV ? lista : lista.filter(({ pendentes }) => pendentes.length === 0))
-const temRascunho = [...numeros, ...depoimentos].some(({ pendentes }) => pendentes.length > 0)
+// O `DEV ? … : []` fica na chamada para o Vite descartar o JSON de dublês no build.
+const numeros = escolher(numerosReais, DEV ? numerosDuble : [], numeroCompleto)
+const depoimentos = escolher(depoimentosReais, DEV ? depoimentosDuble : [], depoimentoCompleto)
 
-function SeloRascunho({ pendentes }) {
+const assinarReduzir = (avisar) => {
+  const midia = window.matchMedia('(prefers-reduced-motion: reduce)')
+  midia.addEventListener('change', avisar)
+  return () => midia.removeEventListener('change', avisar)
+}
+const lerReduzir = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const assinarAba = (avisar) => {
+  document.addEventListener('visibilitychange', avisar)
+  return () => document.removeEventListener('visibilitychange', avisar)
+}
+const lerAbaOculta = () => document.hidden
+
+function Icone({ children }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="size-5"
+    >
+      {children}
+    </svg>
+  )
+}
+
+function SeloDuble() {
   return (
     <span className="inline-flex w-fit rounded-full bg-accent px-2.5 py-0.5 font-sans text-xs font-semibold text-on-accent">
-      Rascunho · falta: {pendentes.join(', ')}
+      Dublê · dado fictício
     </span>
   )
 }
 
-function Foto({ arquivo, nome }) {
-  const src = urlFoto(arquivo)
+function CartaoDepoimento({ citacao, nome, funcao, empresa, duble }) {
+  return (
+    <figure
+      className={`flex h-full flex-col rounded-card border bg-surface p-6 md:p-10 ${
+        duble ? 'border-dashed border-accent' : 'border-border'
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span aria-hidden="true" className="block h-1 w-10 rounded-full bg-highlight" />
+        {DEV && duble && <SeloDuble />}
+      </div>
+      <blockquote className="mt-6 max-w-3xl font-display text-xl leading-snug font-medium md:text-2xl">
+        <p>“{citacao}”</p>
+      </blockquote>
+      <figcaption className="mt-auto pt-8">
+        <span className="block font-semibold">{nome}</span>
+        <span className="block text-sm text-fg-muted">
+          {funcao} · {empresa}
+        </span>
+      </figcaption>
+    </figure>
+  )
+}
 
-  if (!src) {
-    return (
-      <span className="grid size-14 shrink-0 place-items-center rounded-full border border-dashed border-accent bg-bg text-fg-muted">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          className="size-6"
-        >
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21a8 8 0 0 1 16 0" />
-        </svg>
-      </span>
-    )
+const botaoControle =
+  'grid size-11 place-items-center rounded-button border border-border bg-surface text-fg transition-colors hover:border-accent'
+
+// Carrossel que avança sempre para a esquerda. O trilho tem clones nas pontas
+// ([último, ...depoimentos, primeiro]); ao parar num clone, salta sem transição
+// para o slide real equivalente. Pausa com o botão, com o mouse em cima, com foco
+// de teclado dentro e com a aba oculta. Com prefers-reduced-motion não avança sozinho.
+function CarrosselDepoimentos({ itens, duble }) {
+  const total = itens.length
+  const loop = total > 1
+  const slides = loop ? [itens[total - 1], ...itens, itens[0]] : itens
+
+  const [posicao, setPosicao] = useState(loop ? 1 : 0)
+  const [comTransicao, setComTransicao] = useState(true)
+  const [pausadoPeloUsuario, setPausadoPeloUsuario] = useState(false)
+  const [emHover, setEmHover] = useState(false)
+  const [emFoco, setEmFoco] = useState(false)
+  const reduzir = useSyncExternalStore(assinarReduzir, lerReduzir)
+  const abaOculta = useSyncExternalStore(assinarAba, lerAbaOculta)
+
+  const movendo = useRef(false)
+  const inicioToque = useRef(null)
+  const barra = useRef(null)
+  const animacao = useRef(null)
+
+  const autoplay = loop && !reduzir
+  const rodando = autoplay && !pausadoPeloUsuario && !emHover && !emFoco && !abaOculta
+  const atual = loop ? (posicao - 1 + total) % total : 0
+
+  const mover = useCallback((passo) => {
+    if (movendo.current) return
+    movendo.current = true
+    setPosicao((p) => p + passo)
+  }, [])
+
+  function irPara(indice) {
+    if (indice === atual || movendo.current) return
+    movendo.current = true
+    setPosicao(indice + 1)
   }
 
-  const avif = arquivo.endsWith('.webp') ? urlFoto(arquivo.replace(/\.webp$/, '.avif')) : undefined
+  function aoTerminarTransicao(evento) {
+    if (evento.target !== evento.currentTarget) return
+    if (posicao === 0 || posicao === total + 1) {
+      setComTransicao(false)
+      setPosicao(posicao === 0 ? total : 1)
+    } else {
+      movendo.current = false
+    }
+  }
+
+  // Religa a transição depois do salto; dois frames para o salto ser pintado antes.
+  useEffect(() => {
+    if (comTransicao) return
+    let quadro = requestAnimationFrame(() => {
+      quadro = requestAnimationFrame(() => {
+        setComTransicao(true)
+        movendo.current = false
+      })
+    })
+    return () => cancelAnimationFrame(quadro)
+  }, [comTransicao])
+
+  // O tempo de cada slide é a própria animação da barra do indicador ativo: a barra
+  // e a troca de slide andam juntas, e pausar congela as duas no mesmo ponto.
+  useEffect(() => {
+    if (!autoplay || !barra.current) return
+    const anim = barra.current.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], {
+      duration: INTERVALO_MS,
+      easing: 'linear',
+      fill: 'forwards',
+    })
+    anim.pause()
+    anim.onfinish = () => mover(1)
+    animacao.current = anim
+    return () => {
+      anim.cancel()
+      animacao.current = null
+    }
+  }, [atual, autoplay, mover])
+
+  useEffect(() => {
+    const anim = animacao.current
+    if (!anim) return
+    if (rodando) anim.play()
+    else anim.pause()
+  }, [rodando, atual, autoplay])
 
   return (
-    <picture className="shrink-0">
-      {avif && <source srcSet={avif} type="image/avif" />}
-      <img
-        src={src}
-        alt={`Foto de ${nome}`}
-        width="56"
-        height="56"
-        loading="lazy"
-        decoding="async"
-        className="size-14 rounded-full border border-border object-cover"
-      />
-    </picture>
+    <div
+      role="region"
+      aria-roledescription="carrossel"
+      aria-label="Depoimentos de clientes"
+      className="mt-6"
+      onPointerEnter={(e) => e.pointerType === 'mouse' && setEmHover(true)}
+      onPointerLeave={(e) => e.pointerType === 'mouse' && setEmHover(false)}
+      onFocus={(e) => e.target.matches(':focus-visible') && setEmFoco(true)}
+      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setEmFoco(false)}
+      onKeyDown={(e) => {
+        if (!loop) return
+        if (e.key === 'ArrowRight') mover(1)
+        if (e.key === 'ArrowLeft') mover(-1)
+      }}
+    >
+      <div className="overflow-hidden rounded-card">
+        <div
+          aria-live={rodando ? 'off' : 'polite'}
+          className={`flex touch-pan-y ${comTransicao ? 'transition-transform duration-700 ease-out' : ''}`}
+          style={{ transform: `translateX(-${posicao * 100}%)` }}
+          onTransitionEnd={aoTerminarTransicao}
+          onPointerDown={(e) => {
+            inicioToque.current = e.clientX
+          }}
+          onPointerCancel={() => {
+            inicioToque.current = null
+          }}
+          onPointerUp={(e) => {
+            if (!loop || inicioToque.current === null) return
+            const deslocamento = e.clientX - inicioToque.current
+            inicioToque.current = null
+            if (Math.abs(deslocamento) > 50) mover(deslocamento < 0 ? 1 : -1)
+          }}
+        >
+          {slides.map((depoimento, i) => {
+            const clone = loop && (i === 0 || i === total + 1)
+            const oculto = i !== posicao
+            return (
+              <div
+                key={i}
+                role={clone ? undefined : 'group'}
+                aria-roledescription={clone ? undefined : 'slide'}
+                aria-label={clone ? undefined : `${loop ? i : i + 1} de ${total}`}
+                aria-hidden={clone || oculto || undefined}
+                inert={clone || oculto || undefined}
+                className="w-full shrink-0"
+              >
+                <CartaoDepoimento {...depoimento} duble={duble} />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {loop && (
+        <div className="mt-4 flex items-center justify-between gap-4">
+          <div className="flex items-center">
+            {itens.map((depoimento, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => irPara(i)}
+                aria-label={`Mostrar depoimento ${i + 1} de ${total}`}
+                aria-current={i === atual || undefined}
+                className="group grid h-11 place-items-center px-1.5"
+              >
+                {i === atual ? (
+                  <span className="block h-1.5 w-10 overflow-hidden rounded-full bg-border">
+                    <span
+                      ref={barra}
+                      className="block h-full origin-left rounded-full bg-accent"
+                      style={autoplay ? { transform: 'scaleX(0)' } : undefined}
+                    />
+                  </span>
+                ) : (
+                  <span className="block h-1.5 w-4 rounded-full bg-fg-muted transition-colors group-hover:bg-accent" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {autoplay && (
+              <button
+                type="button"
+                onClick={() => setPausadoPeloUsuario((p) => !p)}
+                aria-label={pausadoPeloUsuario ? 'Retomar depoimentos' : 'Pausar depoimentos'}
+                className={botaoControle}
+              >
+                <Icone>
+                  {pausadoPeloUsuario ? (
+                    <path d="M8 5.5v13l10-6.5z" />
+                  ) : (
+                    <path d="M9 5.5v13M15 5.5v13" />
+                  )}
+                </Icone>
+              </button>
+            )}
+            <button type="button" onClick={() => mover(-1)} aria-label="Depoimento anterior" className={botaoControle}>
+              <Icone>
+                <path d="m15 18-6-6 6-6" />
+              </Icone>
+            </button>
+            <button type="button" onClick={() => mover(1)} aria-label="Próximo depoimento" className={botaoControle}>
+              <Icone>
+                <path d="m9 18 6-6-6-6" />
+              </Icone>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
 export default function Resultados() {
-  const numerosVisiveis = exibir(numeros)
-  const depoimentosVisiveis = exibir(depoimentos)
-
-  if (numerosVisiveis.length === 0 && depoimentosVisiveis.length === 0) return null
+  if (numeros.itens.length === 0 && depoimentos.itens.length === 0) return null
 
   return (
     <section id="resultados" aria-labelledby="resultados-titulo" className="section-y">
@@ -99,26 +313,25 @@ export default function Resultados() {
         </h2>
         <p className="mt-4 max-w-2xl text-lg text-fg-muted">Menos confusão. Mais aparelhos entregues.</p>
 
-        {DEV && temRascunho && (
-          <p
-            role="note"
-            className="mt-8 rounded-card border border-dashed border-accent bg-surface p-4 text-sm"
-          >
-            <strong className="font-semibold">Rascunho (visível só em desenvolvimento).</strong>{' '}
+        {DEV && (numeros.duble || depoimentos.duble) && (
+          <p role="note" className="mt-8 rounded-card border border-dashed border-accent bg-surface p-4 text-sm">
+            <strong className="font-semibold">Dublês (visível só em desenvolvimento).</strong>{' '}
             <span className="text-fg-muted">
-              Preencha <code className="font-mono text-fg">content/resultados.json</code> com dados reais.
-              No build de produção, itens incompletos não aparecem.
+              <code className="font-mono text-fg">content/resultados.json</code> ainda tem{' '}
+              {numeros.pendentes} número(s) e {depoimentos.pendentes} depoimento(s) pendentes, então esta seção
+              mostra os dados fictícios de <code className="font-mono text-fg">content/resultados.dubles.json</code>.
+              No build de produção os dublês nunca aparecem.
             </span>
           </p>
         )}
 
-        {numerosVisiveis.length > 0 && (
+        {numeros.itens.length > 0 && (
           <dl className="mt-10 flex flex-col divide-y divide-border rounded-card border border-border bg-surface sm:flex-row sm:divide-x sm:divide-y-0 lg:mt-12">
-            {numerosVisiveis.map(({ valor, rotulo, fonte, pendentes }, i) => (
+            {numeros.itens.map(({ valor, rotulo, fonte }, i) => (
               <div
                 key={i}
                 className={`flex min-w-0 flex-col gap-2 p-6 sm:flex-1 md:p-8 ${
-                  pendentes.length ? 'outline-2 -outline-offset-2 outline-accent outline-dashed' : ''
+                  numeros.duble ? 'outline-2 -outline-offset-2 outline-accent outline-dashed' : ''
                 }`}
               >
                 <dt className="text-fg-muted">{rotulo}</dt>
@@ -126,9 +339,9 @@ export default function Resultados() {
                   {valor}
                 </dd>
                 {fonte && <dd className="text-xs text-fg-muted">{fonte}</dd>}
-                {DEV && pendentes.length > 0 && (
+                {DEV && numeros.duble && (
                   <dd>
-                    <SeloRascunho pendentes={pendentes} />
+                    <SeloDuble />
                   </dd>
                 )}
               </div>
@@ -136,38 +349,7 @@ export default function Resultados() {
           </dl>
         )}
 
-        {depoimentosVisiveis.length > 0 && (
-          <ul role="list" className="mt-6 grid gap-4 md:grid-cols-2">
-            {depoimentosVisiveis.map(({ citacao, nome, funcao, empresa, foto, pendentes }, i) => (
-              <li key={i}>
-                <figure
-                  className={`flex h-full flex-col rounded-card border bg-surface p-6 md:p-8 ${
-                    pendentes.length ? 'border-dashed border-accent' : 'border-border'
-                  }`}
-                >
-                  <span aria-hidden="true" className="block h-1 w-10 rounded-full bg-highlight" />
-                  {DEV && pendentes.length > 0 && (
-                    <span className="mt-4">
-                      <SeloRascunho pendentes={pendentes} />
-                    </span>
-                  )}
-                  <blockquote className="mt-5 text-lg">
-                    <p>“{citacao}”</p>
-                  </blockquote>
-                  <figcaption className="mt-auto flex items-center gap-4 pt-6">
-                    <Foto arquivo={foto} nome={nome} />
-                    <span className="min-w-0">
-                      <span className="block font-semibold">{nome}</span>
-                      <span className="block text-sm text-fg-muted">
-                        {funcao} · {empresa}
-                      </span>
-                    </span>
-                  </figcaption>
-                </figure>
-              </li>
-            ))}
-          </ul>
-        )}
+        {depoimentos.itens.length > 0 && <CarrosselDepoimentos itens={depoimentos.itens} duble={depoimentos.duble} />}
       </div>
     </section>
   )

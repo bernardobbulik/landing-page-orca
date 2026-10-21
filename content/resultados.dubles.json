@@ -1,0 +1,34 @@
+{
+  "_aviso": "DUBLÊS: dados FICTÍCIOS só para ver o layout em desenvolvimento. Pessoas, empresas, números e falas não existem. Nunca copie nada daqui para content/resultados.json; o build de produção não inclui este arquivo.",
+  "numeros": [
+    { "valor": "−40%", "rotulo": "ligações perguntando se o aparelho ficou pronto", "fonte": "Dado fictício (dublê)" },
+    { "valor": "92%", "rotulo": "das OS entregues no prazo combinado", "fonte": "Dado fictício (dublê)" },
+    { "valor": "3 min", "rotulo": "para abrir uma OS com checklist e fotos", "fonte": "Dado fictício (dublê)" }
+  ],
+  "depoimentos": [
+    {
+      "citacao": "Antes a gente procurava aparelho na gaveta. Agora abro a OS e sei em que etapa está e com qual técnico.",
+      "nome": "Marina Costa",
+      "funcao": "Dona",
+      "empresa": "Assistência Exemplo · Centro"
+    },
+    {
+      "citacao": "O cliente acompanha pelo link e parou de ligar perguntando se já ficou pronto. O balcão respira.",
+      "nome": "Rafael Souza",
+      "funcao": "Gerente de balcão",
+      "empresa": "Assistência Exemplo · Zona Sul"
+    },
+    {
+      "citacao": "O checklist com foto na entrada acabou com a discussão na retirada sobre risco na tela.",
+      "nome": "Juliana Prado",
+      "funcao": "Gerente de balcão",
+      "empresa": "Assistência Exemplo · Shopping"
+    },
+    {
+      "citacao": "Cada técnico vê a própria fila na bancada. Ninguém pega aparelho errado nem esquece OS parada.",
+      "nome": "André Lima",
+      "funcao": "Técnico",
+      "empresa": "Assistência Exemplo · Centro"
+    }
+  ]
+}
