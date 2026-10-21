@@ -229,7 +229,7 @@ function DetalheAviso() {
       aria-label="Exemplo de avisos automáticos enviados ao cliente: orçamento pronto e aparelho pronto para retirada."
       className={painel}
     >
-      <p className="text-xs text-fg-muted">Enviado automaticamente · canal de aviso</p>
+      <p className="text-xs text-fg-muted">Enviado automaticamente · canal de avisos</p>
       <ul className="mt-3 space-y-2">
         {mensagens.map(({ texto, hora }) => (
           <li key={hora} className="rounded-card rounded-tl-sm border border-border bg-surface px-3 py-2 text-sm">
