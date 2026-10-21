@@ -1,0 +1,27 @@
+{
+  "_instrucoes": [
+    "Só dados reais, com autorização do cliente citado. Troque cada [PREENCHER].",
+    "Item com campo vazio ou com [PREENCHER] está pendente. Em desenvolvimento (npm run dev), enquanto houver pendência a lista mostra os dublês de content/resultados.dubles.json. No build de produção os dublês nunca aparecem: só itens completos são exibidos, e a seção some se nada estiver preenchido.",
+    "numeros.valor: o número já formatado, com unidade (%, min, dias...). numeros.rotulo: o que foi medido. numeros.fonte: opcional, base da medição (quem, período); use \"\" para não exibir.",
+    "depoimentos.citacao: o texto do cliente, sem aspas. Com 2 ou mais depoimentos completos, eles viram carrossel."
+  ],
+  "numeros": [
+    { "valor": "[PREENCHER]", "rotulo": "[PREENCHER]", "fonte": "[PREENCHER]" },
+    { "valor": "[PREENCHER]", "rotulo": "[PREENCHER]", "fonte": "[PREENCHER]" },
+    { "valor": "[PREENCHER]", "rotulo": "[PREENCHER]", "fonte": "[PREENCHER]" }
+  ],
+  "depoimentos": [
+    {
+      "citacao": "[PREENCHER]",
+      "nome": "[PREENCHER]",
+      "funcao": "[PREENCHER]",
+      "empresa": "[PREENCHER]"
+    },
+    {
+      "citacao": "[PREENCHER]",
+      "nome": "[PREENCHER]",
+      "funcao": "[PREENCHER]",
+      "empresa": "[PREENCHER]"
+    }
+  ]
+}
